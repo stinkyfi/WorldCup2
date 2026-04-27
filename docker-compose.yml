@@ -1,0 +1,22 @@
+# Local PostgreSQL for WorldCup2 (Story 1.8+)
+# Usage: docker compose up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: worldcup2-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: worldcup2
+      POSTGRES_PASSWORD: worldcup2_dev
+      POSTGRES_DB: worldcup2
+    volumes:
+      - wc2_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U worldcup2 -d worldcup2"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  wc2_pgdata:

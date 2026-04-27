@@ -1,0 +1,21 @@
+// WorldCup2 — single schema for all chains + domains (architecture)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Minimal league row for Story 1.8 scaffold; extended by later epics.
+model League {
+  id        String   @id @default(cuid())
+  chainId   Int      @map("chain_id")
+  title     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([chainId], map: "idx_leagues_chain_id")
+  @@map("leagues")
+}

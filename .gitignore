@@ -1,0 +1,9 @@
+# Backend (Story 1.8+)
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db

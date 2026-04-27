@@ -9,13 +9,16 @@
     "test:coverage": "hardhat test --coverage",
     "check:coverage": "node scripts/check-coverage.mjs",
     "slither": "node scripts/run-slither.mjs",
-    "clean": "hardhat clean"
+    "clean": "hardhat clean",
+    "deploy": "hardhat run scripts/deploy.ts",
+    "verify:deployed": "hardhat run scripts/verify.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.6.1"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.4",
+    "dotenv": "^17.4.2",
     "hardhat": "^3.4.1",
     "typescript": "^5.7.3"
   }

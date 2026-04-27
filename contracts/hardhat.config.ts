@@ -22,30 +22,42 @@ export default defineConfig({
     "base-testnet": {
       type: "http",
       url: configVariable("RPC_URL_BASE_TESTNET"),
+      accounts: [configVariable("DEPLOYER_KEY")],
+      chainId: 84532,
     },
     "base-mainnet": {
       type: "http",
       url: configVariable("RPC_URL_BASE_MAINNET"),
+      accounts: [configVariable("DEPLOYER_KEY")],
+      chainId: 8453,
     },
 
     // ── Ethereum ───────────────────────────────────────────────────────────────
     "ethereum-sepolia": {
       type: "http",
       url: configVariable("RPC_URL_ETHEREUM_SEPOLIA"),
+      accounts: [configVariable("DEPLOYER_KEY")],
+      chainId: 11155111,
     },
     "ethereum-mainnet": {
       type: "http",
       url: configVariable("RPC_URL_ETHEREUM_MAINNET"),
+      accounts: [configVariable("DEPLOYER_KEY")],
+      chainId: 1,
     },
 
     // ── Sonic ──────────────────────────────────────────────────────────────────
     "sonic-testnet": {
       type: "http",
       url: configVariable("RPC_URL_SONIC_TESTNET"),
+      accounts: [configVariable("DEPLOYER_KEY")],
+      chainId: 57054,
     },
     "sonic-mainnet": {
       type: "http",
       url: configVariable("RPC_URL_SONIC_MAINNET"),
+      accounts: [configVariable("DEPLOYER_KEY")],
+      chainId: 146,
     },
   },
 
