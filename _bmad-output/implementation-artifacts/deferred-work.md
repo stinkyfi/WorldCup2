@@ -10,3 +10,8 @@
 - **No `chainId` guard in network definitions** — Without explicit `chainId`, a misconfigured RPC URL pointing to the wrong chain won't be caught before broadcast. Story 1.7 should add chainId to all network configs.
 - **NodeNext `.js` extension requirement undocumented** — `module: NodeNext` requires `.js` suffixes on all relative imports in TypeScript source. Story 1.2+ authors must follow this pattern; consider adding a note to the project conventions.
 - **`skipLibCheck: true`** — Standard Hardhat practice but reduces type-safety coverage in plugin declaration files.
+
+## Deferred from: code review of 1-3-oraclecontrollersol (2026-04-27)
+
+- **B2+E2: `extendGracePeriod` before `setGroupDeadline` creates silent past deadline** — If `extendGracePeriod` is called on a group where `expectedDeadline` is still `0`, the result is `additionalSeconds` as an absolute Unix timestamp, which may be in the past. Additionally, extending by `0` seconds emits a `GracePeriodExtended` event with no change, which could confuse the indexer. Acceptable for MVP; Story 1.7 deploy scripts should always call `setGroupDeadline` before any `extendGracePeriod`.
+- **B3+E1: `setResultsForTesting` allows silent overwrite in staging** — Unlike `postResults`, the staging helper has no idempotency check and silently replaces previously set results. Intentional for test flexibility, but inconsistent with production behaviour. Staging test authors should be aware they can mutate results freely, which may mask bugs that would surface in production.

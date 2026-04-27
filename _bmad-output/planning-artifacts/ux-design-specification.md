@@ -622,6 +622,11 @@ Creator's league monitoring view. Metrics: entry count, pool value, referral con
 **`<TokenWhitelistQueue>`**
 Public queue of pending whitelist requests. Each card: token address + chain + upvote/downvote count + fee-on-transfer/rebase auto-detection flag. Admin variant adds approve/reject action buttons.
 
+**Admin validation — pre-submission guards (must be checked before enabling the Approve button):**
+- **Zero address check:** If the submitted token address is `0x000...000`, show a red inline error badge "Invalid address — cannot be zero address" and disable the Approve button. The `WhitelistRegistry` contract will revert with `InvalidTokenAddress` if this reaches the chain.
+- **EOA check:** Resolve the token address on-chain (`eth_getCode`). If the address has no deployed bytecode (it is a wallet, not a contract), show a red inline error badge "Address is a wallet, not a token contract" and disable the Approve button. The `WhitelistRegistry` contract enforces `token.code.length > 0` and will revert with `InvalidTokenAddress`.
+- Both checks must run automatically when the admin opens a request card. The Approve button stays disabled until both pass. This prevents wasted gas on transactions that will revert.
+
 ### Implementation Priority
 
 | Phase | Components | Drives |

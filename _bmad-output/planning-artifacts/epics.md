@@ -291,26 +291,28 @@ So that smart contract development, testing, and deployment can begin immediatel
 ### Story 1.2: WhitelistRegistry.sol
 
 As a platform admin,
-I want a `WhitelistRegistry` contract that maintains the canonical list of approved ERC-20 tokens per chain,
+I want a `WhitelistRegistry` contract that maintains the canonical list of approved ERC-20 tokens on this chain,
 So that league creators can only select tokens that have passed platform vetting.
 
 **Acceptance Criteria:**
 
 **Given** the contract is deployed by the owner address
-**When** the owner calls `approveToken(address token, uint8 chainId)`
-**Then** `isWhitelisted(token, chainId)` returns `true` and a `TokenApproved` event is emitted
+**When** the owner calls `approveToken(address token)`
+**Then** `isWhitelisted(token)` returns `true` and a `TokenApproved` event is emitted
 
 **Given** a whitelisted token
-**When** the owner calls `removeToken(address token, uint8 chainId)`
-**Then** `isWhitelisted(token, chainId)` returns `false` and a `TokenRemoved` event is emitted
+**When** the owner calls `removeToken(address token)`
+**Then** `isWhitelisted(token)` returns `false` and a `TokenRemoved` event is emitted
 
 **Given** a non-owner address
 **When** they call `approveToken` or `removeToken`
 **Then** the transaction reverts with `OwnableUnauthorizedAccount`
 
 **Given** the contract is deployed
-**When** `getWhitelistedTokens(chainId)` is called
-**Then** it returns all currently whitelisted token addresses for that chain
+**When** `getWhitelistedTokens()` is called
+**Then** it returns all currently whitelisted token addresses on this chain
+
+> **Deployment:** One `WhitelistRegistry` is deployed per supported chain (Base, Sonic, Ethereum). Each contract is chain-unaware — it simply manages a set of approved token addresses for the chain it lives on. The app connects to the correct chain and calls the correct contract address.
 
 ---
 

@@ -48,8 +48,8 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   epic-1: in-progress
   1-1-hardhat-contracts-repo-init-and-config: done
-  1-2-whitelistregistrysol: backlog
-  1-3-oraclecontrollersol: backlog
+  1-2-whitelistregistrysol: done
+  1-3-oraclecontrollersol: done
   1-4-leaguefactorysol: backlog
   1-5-leaguesol: backlog
   1-6-contract-test-suite-and-slither: backlog

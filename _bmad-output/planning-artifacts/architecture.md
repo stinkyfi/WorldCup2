@@ -250,7 +250,9 @@ WorldCup2/
 │   │   ├── LeagueFactory.sol       # Admin whitelist, global fee params, creates League instances
 │   │   ├── League.sol              # Per-league: entry, commitment hash, state machine, Merkle claim
 │   │   ├── OracleController.sol    # Posts group results on-chain, expectedResultsDeadline
-│   │   └── WhitelistRegistry.sol   # Token whitelist per chain, request queue, fee handling
+│   │   └── WhitelistRegistry.sol   # Token whitelist — one deployment per chain, no chainId param
+│   │                              # Extended in Epic 9: submitRequest (fee escrow), approveRequest,
+│   │                              # rejectRequest (auto-refund). Constructor adds feeToken + requestFee.
 │   ├── scripts/
 │   │   ├── deploy-base.ts
 │   │   ├── deploy-ethereum.ts
@@ -300,14 +302,14 @@ WorldCup2/
 │       │   │   ├── entries.ts          # POST /entries, GET /entries/:leagueId
 │       │   │   ├── leaderboard.ts      # GET /leaderboard/:leagueId (+ lastUpdatedAt)
 │       │   │   ├── disputes.ts         # POST /disputes, GET /disputes/:leagueId
-│       │   │   ├── whitelist.ts        # GET /whitelist, POST /whitelist/request
+│       │   │   ├── whitelist.ts        # GET /whitelist, POST /whitelist/vote (vote tally in Postgres only)
 │       │   │   ├── stats.ts            # GET /stats — TVL, active leagues, player count
 │       │   │   └── admin/
 │       │   │       ├── settings.ts     # Platform params (fee %, min entry, free league toggle)
 │       │   │       ├── oracle.ts       # Oracle health, pre-filled manual post payload
 │       │   │       ├── disputes.ts     # Dispute queue actions (accept/dismiss/refund-all)
 │       │   │       ├── leagues.ts      # League moderation (warn/pause/close/dismiss)
-│       │   │       └── whitelist.ts    # Approve/reject whitelist requests
+│       │   │       └── whitelist.ts    # Approve/reject: provides on-chain tx payload for admin to sign
 │       │   └── middleware/
 │       │       ├── auth.ts             # SIWE session verification
 │       │       ├── adminOnly.ts        # Admin whitelist check
@@ -409,7 +411,7 @@ WorldCup2/
 | FR30–34 | Oracle & Results | `oracle/` services | `admin/OracleHealth.tsx` |
 | FR35–41 | Dispute Resolution | `api/routes/disputes.ts` | `DisputeFlow.tsx`, `admin/Disputes.tsx` |
 | FR42–48, FR63 | Payout & Resolution | `indexer/scoring/merkleBuilder.ts` | `ClaimPayout.tsx` |
-| FR49–54 | Token Whitelist | `api/routes/whitelist.ts` | `Whitelist.tsx`, `admin/Whitelist.tsx` |
+| FR49–54 | Token Whitelist | `WhitelistRegistry.sol` (request + fee escrow on-chain, Epic 9); indexer indexes `RequestSubmitted`/`RequestApproved`/`RequestRejected` events; FR50 votes stored in Postgres only (no on-chain vote storage — gas cost with no contract logic benefit) | `Whitelist.tsx`, `admin/Whitelist.tsx` |
 | FR55–60 | Admin Management | `api/routes/admin/*` | `admin/*` pages |
 | FR61–62 | Landing & Stats | `api/routes/stats.ts` | `Landing.tsx` |
 
