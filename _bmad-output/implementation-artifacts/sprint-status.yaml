@@ -55,7 +55,7 @@ development_status:
   1-6-contract-test-suite-and-slither: done
   1-7-multi-chain-deploy-scripts: done
   1-8-backend-repo-init-and-config: done
-  1-9-frontend-repo-init-and-design-system: backlog
+  1-9-frontend-repo-init-and-design-system: done
   1-10-github-actions-cicd: backlog
   epic-1-retrospective: optional
 
