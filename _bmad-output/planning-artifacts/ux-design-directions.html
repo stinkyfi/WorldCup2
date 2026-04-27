@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorldCup2 — UX Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  /* ─── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #0A0E1A;
+    --surface:  #131929;
+    --elevated: #1C2438;
+    --border:   #2A3450;
+    --primary:  #3B82F6;
+    --primary-h:#60A5FA;
+    --success:  #22C55E;
+    --warning:  #F59E0B;
+    --danger:   #EF4444;
+    --muted:    #6B7280;
+    --fg:       #F1F5F9;
+    --radius:   8px;
+  }
+  body { font-family: 'Inter', sans-serif; background: #060810; color: var(--fg); min-height: 100vh; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ─── Selector Nav ──────────────────────────────────────────── */
+  .selector {
+    position: sticky; top: 0; z-index: 100;
+    background: #060810cc; backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .selector-label { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-right: 8px; }
+  .dir-btn {
+    background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+    padding: 6px 16px; border-radius: 20px; font-size: 13px; cursor: pointer;
+    transition: all .15s;
+  }
+  .dir-btn:hover { border-color: var(--primary); color: var(--fg); }
+  .dir-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
+  /* ─── Direction Panels ──────────────────────────────────────── */
+  .direction { display: none; }
+  .direction.active { display: block; }
+
+  /* ─── Shared Components ─────────────────────────────────────── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .badge-blue  { background: #1D3461; color: #60A5FA; }
+  .badge-green { background: #14532D55; color: var(--success); }
+  .badge-warn  { background: #78350F55; color: var(--warning); }
+  .badge-red   { background: #7F1D1D55; color: var(--danger); }
+  .badge-muted { background: var(--elevated); color: var(--muted); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    padding: 8px 18px; border-radius: var(--radius); font-size: 14px; font-weight: 600;
+    border: none; transition: all .15s;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-h); }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary-h); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-lg { padding: 12px 28px; font-size: 16px; border-radius: 10px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .card-elevated { background: var(--elevated); }
+
+  .flag { width: 20px; height: 14px; border-radius: 2px; object-fit: cover; display:inline-block; }
+
+  /* rank delta */
+  .delta-up   { color: var(--success); font-size: 12px; font-weight: 700; }
+  .delta-down { color: var(--danger);  font-size: 12px; font-weight: 700; }
+  .delta-same { color: var(--muted);   font-size: 12px; }
+
+  /* countdown */
+  .countdown { font-variant-numeric: tabular-nums; }
+
+  /* progress bar */
+  .progress-track { background: var(--elevated); border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-fill  { border-radius: 4px; height: 100%; transition: width .3s; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     DIRECTION 1 — "Broadcast"
+     Editorial, top-nav, large hero stats, card grid below
+  ═══════════════════════════════════════════════════════════════════ */
+  .d1-nav {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 32px; display: flex; align-items: center; gap: 32px; height: 56px;
+  }
+  .d1-logo { font-size: 18px; font-weight: 700; color: var(--fg); letter-spacing: -.02em; }
+  .d1-logo span { color: var(--primary); }
+  .d1-navlinks { display: flex; gap: 24px; margin-left: auto; }
+  .d1-navlink { color: var(--muted); font-size: 14px; text-decoration: none; }
+  .d1-navlink:hover { color: var(--fg); }
+  .d1-navlink.active { color: var(--fg); font-weight: 600; border-bottom: 2px solid var(--primary); padding-bottom: 2px; }
+
+  .d1-hero {
+    background: linear-gradient(135deg, #0D1528 0%, #0A0E1A 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 40px 32px 32px;
+  }
+  .d1-hero-eyebrow { color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
+  .d1-hero-title { font-size: 36px; font-weight: 700; line-height: 1.15; margin-bottom: 8px; }
+  .d1-hero-sub { color: var(--muted); font-size: 15px; margin-bottom: 28px; }
+  .d1-stats { display: flex; gap: 40px; flex-wrap: wrap; }
+  .d1-stat-label { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .d1-stat-value { font-size: 24px; font-weight: 700; }
+  .d1-stat-value.green { color: var(--success); }
+  .d1-stat-value.blue  { color: var(--primary-h); }
+
+  .d1-content  { padding: 28px 32px; max-width: 1280px; }
+  .d1-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .d1-section-title { font-size: 16px; font-weight: 700; }
+
+  .d1-league-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+  .d1-league-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; cursor: pointer;
+    transition: border-color .15s;
+  }
+  .d1-league-card:hover { border-color: var(--primary); }
+  .d1-league-card.featured { border-color: var(--warning); background: linear-gradient(135deg, #1C2438, #131929); }
+  .d1-lc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+  .d1-lc-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .d1-lc-creator { color: var(--muted); font-size: 12px; }
+  .d1-lc-stats { display: flex; gap: 16px; padding-top: 12px; border-top: 1px solid var(--border); margin-top: 12px; }
+  .d1-lc-stat-l { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+  .d1-lc-stat-v { font-size: 14px; font-weight: 700; }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     DIRECTION 2 — "Arena"
+     Sidebar navigation, dashboard-first, metric-heavy leaderboard
+  ═══════════════════════════════════════════════════════════════════ */
+  .d2-shell { display: flex; height: 100vh; min-height: 700px; }
+  .d2-sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .d2-sidebar-logo { padding: 20px 20px 16px; font-size: 16px; font-weight: 700; border-bottom: 1px solid var(--border); }
+  .d2-sidebar-logo span { color: var(--primary); }
+  .d2-nav-section { padding: 12px 8px 4px; }
+  .d2-nav-label { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; padding: 0 12px; margin-bottom: 4px; }
+  .d2-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--muted);
+    transition: all .15s;
+  }
+  .d2-nav-item:hover { background: var(--elevated); color: var(--fg); }
+  .d2-nav-item.active { background: #1D3461; color: var(--primary-h); font-weight: 600; }
+  .d2-nav-icon { width: 16px; text-align: center; }
+  .d2-sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border); }
+  .d2-wallet { display: flex; align-items: center; gap: 8px; }
+  .d2-wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+  .d2-wallet-addr { font-size: 12px; color: var(--muted); }
+
+  .d2-main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .d2-topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .d2-page-title { font-size: 18px; font-weight: 700; }
+  .d2-content { padding: 24px; flex: 1; }
+
+  .d2-metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+  .d2-metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .d2-metric-label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .d2-metric-value { font-size: 22px; font-weight: 700; }
+
+  .d2-two-col { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+  .d2-board-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .d2-board-title { font-size: 14px; font-weight: 700; flex: 1; }
+  .d2-board-updated { color: var(--muted); font-size: 11px; }
+  .d2-board-row {
+    display: grid; grid-template-columns: 32px 1fr 80px 60px;
+    align-items: center; gap: 8px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .d2-board-row:last-child { border-bottom: none; }
+  .d2-board-row.highlight { background: #1D3461; }
+  .d2-rank { font-weight: 700; font-size: 14px; }
+  .d2-player { display: flex; align-items: center; gap: 8px; }
+  .d2-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--elevated); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--primary-h); }
+  .d2-score { font-weight: 700; text-align: right; }
+  .d2-delta { text-align: right; }
+
+  .d2-side-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .d2-side-hdr { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; }
+  .d2-league-info { padding: 16px; }
+  .d2-info-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .d2-info-row:last-child { border-bottom: none; }
+  .d2-info-label { color: var(--muted); }
+  .d2-info-value { font-weight: 600; }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     DIRECTION 3 — "Field"
+     Prediction form as hero, game-first, minimal chrome
+  ═══════════════════════════════════════════════════════════════════ */
+  .d3-nav {
+    background: var(--bg)cc; backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px; display: flex; align-items: center; height: 52px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .d3-logo { font-size: 16px; font-weight: 700; }
+  .d3-logo span { color: var(--primary); }
+  .d3-nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .d3-progress-global { flex: 1; max-width: 200px; margin: 0 24px; }
+  .d3-prog-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-align: center; }
+
+  .d3-content { padding: 24px 32px; max-width: 960px; margin: 0 auto; }
+  .d3-form-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .d3-league-name { font-size: 20px; font-weight: 700; }
+  .d3-pool-pill { background: var(--elevated); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 600; color: var(--success); }
+  .d3-lock-pill  { background: var(--elevated); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 600; color: var(--warning); }
+
+  .d3-group-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .d3-group-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; transition: border-color .15s;
+  }
+  .d3-group-card.done { border-color: var(--success)55; }
+  .d3-group-card-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 700;
+  }
+  .d3-group-card-hdr .done-icon { color: var(--success); font-size: 14px; }
+  .d3-team-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+    cursor: grab;
+  }
+  .d3-team-row:last-child { border-bottom: none; }
+  .d3-pos { width: 20px; height: 20px; border-radius: 4px; background: var(--elevated); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .d3-pos.p1 { background: #78350F55; color: var(--warning); }
+  .d3-pos.p2 { background: #1C3461; color: var(--primary-h); }
+  .d3-drag-handle { color: var(--muted); font-size: 12px; margin-left: auto; opacity: .4; }
+  .d3-team-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .d3-odds { font-size: 11px; color: var(--muted); }
+
+  .d3-footer-bar {
+    position: sticky; bottom: 0; background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 32px; display: flex; align-items: center; gap: 16px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     DIRECTION 4 — "Claim" screen  (post-match, payout, victory)
+  ═══════════════════════════════════════════════════════════════════ */
+  .d4-page { padding: 40px 32px; max-width: 640px; margin: 0 auto; }
+  .d4-league-meta { text-align: center; margin-bottom: 32px; }
+  .d4-league-meta .d4-status { color: var(--success); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
+  .d4-league-meta h2 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  .d4-league-meta p { color: var(--muted); font-size: 14px; }
+
+  .d4-win-card {
+    background: linear-gradient(135deg, #14532D33, #1C2438 60%);
+    border: 1px solid var(--success)55;
+    border-radius: 12px; padding: 28px; text-align: center; margin-bottom: 20px;
+  }
+  .d4-win-trophy { font-size: 48px; margin-bottom: 8px; }
+  .d4-win-label { color: var(--success); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
+  .d4-win-amount { font-size: 40px; font-weight: 700; margin-bottom: 4px; }
+  .d4-win-sub { color: var(--muted); font-size: 13px; }
+  .d4-win-rank { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; }
+
+  .d4-breakdown { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+  .d4-breakdown-hdr { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .d4-bd-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .d4-bd-row:last-child { border-bottom: none; }
+  .d4-bd-label { color: var(--muted); }
+  .d4-bd-value { font-weight: 700; }
+  .d4-bd-value.green { color: var(--success); }
+
+  .d4-claim-section { text-align: center; }
+  .d4-claim-note { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+  .d4-share-row { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ─── Direction Selector ──────────────────────────────────────── -->
+<div class="selector">
+  <span class="selector-label">Direction</span>
+  <button class="dir-btn active" onclick="show(1)">1 · Broadcast — League Browse</button>
+  <button class="dir-btn" onclick="show(2)">2 · Arena — Leaderboard Dashboard</button>
+  <button class="dir-btn" onclick="show(3)">3 · Field — Prediction Form</button>
+  <button class="dir-btn" onclick="show(4)">4 · Victory — Claim Payout</button>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     DIRECTION 1 — Broadcast: League Browse
+════════════════════════════════════════════════════════════════ -->
+<div class="direction active" id="dir-1">
+  <!-- Nav -->
+  <nav class="d1-nav">
+    <div class="d1-logo">WC<span>2</span> Leagues</div>
+    <div class="d1-navlinks">
+      <a class="d1-navlink active" href="#">Browse</a>
+      <a class="d1-navlink" href="#">My Leagues</a>
+      <a class="d1-navlink" href="#">Create</a>
+      <a class="d1-navlink" href="#">Leaderboard</a>
+    </div>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px;">
+      <span class="badge badge-muted mono">0x3f…a9d2</span>
+      <button class="btn btn-outline btn-sm">⬡ Base</button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="d1-hero">
+    <div class="d1-hero-eyebrow">⚽ World Cup 2026 · June 11 – July 19</div>
+    <div class="d1-hero-title">Predict. Compete. Claim.</div>
+    <div class="d1-hero-sub">Enter a league, rank all 32 groups, and win from the prize pool.</div>
+    <div class="d1-stats">
+      <div>
+        <div class="d1-stat-label">Total Value Locked</div>
+        <div class="d1-stat-value green">$412,800</div>
+      </div>
+      <div>
+        <div class="d1-stat-label">Active Leagues</div>
+        <div class="d1-stat-value blue">84</div>
+      </div>
+      <div>
+        <div class="d1-stat-label">Total Players</div>
+        <div class="d1-stat-value">6,241</div>
+      </div>
+      <div style="margin-left:auto;">
+        <button class="btn btn-primary btn-lg" style="gap:8px;">✚ Create a League</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="d1-content">
+    <!-- Filters -->
+    <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm">All Chains</button>
+      <button class="btn btn-outline btn-sm">⬡ Base</button>
+      <button class="btn btn-outline btn-sm">⟠ Ethereum</button>
+      <button class="btn btn-outline btn-sm">◎ Sonic</button>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn btn-outline btn-sm">Sort: Pool Size ▾</button>
+        <button class="btn btn-outline btn-sm">Filter ⊞</button>
+      </div>
+    </div>
+
+    <!-- Featured -->
+    <div class="d1-section-hdr">
+      <div class="d1-section-title">⭐ Featured Leagues</div>
+    </div>
+    <div class="d1-league-grid" style="margin-bottom:28px;">
+      <!-- Card 1 -->
+      <div class="d1-league-card featured">
+        <div class="d1-lc-top">
+          <div>
+            <div class="d1-lc-name">Crypto Twitter World Cup 2026</div>
+            <div class="d1-lc-creator">by cryptoFC.eth</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+            <span class="badge badge-warn">⭐ Featured</span>
+            <span class="badge badge-blue">⬡ Base</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); margin-bottom:10px;">
+          <span class="badge badge-muted">USDC</span>
+          <span>·</span>
+          <span>50 USDC entry</span>
+          <span>·</span>
+          <span style="color:var(--warning);">⏱ Locks in 4d 12h</span>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:4px;">
+            <span>Prize pool</span>
+            <span>186 / 500 entries</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:37%; background:var(--warning);"></div>
+          </div>
+        </div>
+        <div class="d1-lc-stats">
+          <div>
+            <div class="d1-lc-stat-l">Prize Pool</div>
+            <div class="d1-lc-stat-v" style="color:var(--success);">$8,835</div>
+          </div>
+          <div>
+            <div class="d1-lc-stat-l">Entries</div>
+            <div class="d1-lc-stat-v">186</div>
+          </div>
+          <div>
+            <div class="d1-lc-stat-l">Creator fee</div>
+            <div class="d1-lc-stat-v">3%</div>
+          </div>
+          <div style="margin-left:auto; align-self:flex-end;">
+            <button class="btn btn-primary btn-sm">Enter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="d1-league-card">
+        <div class="d1-lc-top">
+          <div>
+            <div class="d1-lc-name">Discord Ballers League Season 1</div>
+            <div class="d1-lc-creator">by footballdegens.eth</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+            <span class="badge badge-green">● Open</span>
+            <span class="badge badge-muted">⟠ ETH</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); margin-bottom:10px;">
+          <span class="badge badge-muted">ETH</span>
+          <span>·</span>
+          <span>0.01 ETH entry</span>
+          <span>·</span>
+          <span style="color:var(--warning);">⏱ Locks in 2d 6h</span>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:4px;">
+            <span>Prize pool</span>
+            <span>54 / 100 entries</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:54%; background:var(--primary);"></div>
+          </div>
+        </div>
+        <div class="d1-lc-stats">
+          <div>
+            <div class="d1-lc-stat-l">Prize Pool</div>
+            <div class="d1-lc-stat-v" style="color:var(--success);">0.513 ETH</div>
+          </div>
+          <div>
+            <div class="d1-lc-stat-l">Entries</div>
+            <div class="d1-lc-stat-v">54</div>
+          </div>
+          <div>
+            <div class="d1-lc-stat-l">Max entries</div>
+            <div class="d1-lc-stat-v">100</div>
+          </div>
+          <div style="margin-left:auto; align-self:flex-end;">
+            <button class="btn btn-primary btn-sm">Enter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="d1-league-card">
+        <div class="d1-lc-top">
+          <div>
+            <div class="d1-lc-name">Sonic Speed Predictions</div>
+            <div class="d1-lc-creator">by sonicgang.eth</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+            <span class="badge badge-green">● Open</span>
+            <span class="badge badge-muted">◎ Sonic</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); margin-bottom:10px;">
+          <span class="badge badge-muted">USSD</span>
+          <span>·</span>
+          <span>100 USSD entry</span>
+          <span>·</span>
+          <span style="color:var(--success);">⏱ Locks in 8d 3h</span>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:4px;">
+            <span>Prize pool</span>
+            <span>12 / 200 entries</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:6%; background:var(--primary);"></div>
+          </div>
+        </div>
+        <div class="d1-lc-stats">
+          <div>
+            <div class="d1-lc-stat-l">Prize Pool</div>
+            <div class="d1-lc-stat-v" style="color:var(--success);">1,140 USSD</div>
+          </div>
+          <div>
+            <div class="d1-lc-stat-l">Entries</div>
+            <div class="d1-lc-stat-v">12</div>
+          </div>
+          <div>
+            <div class="d1-lc-stat-l">Min players</div>
+            <div class="d1-lc-stat-v">20 ⚠</div>
+          </div>
+          <div style="margin-left:auto; align-self:flex-end;">
+            <button class="btn btn-primary btn-sm">Enter</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     DIRECTION 2 — Arena: Leaderboard Dashboard
+════════════════════════════════════════════════════════════════ -->
+<div class="direction" id="dir-2">
+  <div class="d2-shell">
+    <!-- Sidebar -->
+    <aside class="d2-sidebar">
+      <div class="d2-sidebar-logo">WC<span>2</span></div>
+      <div class="d2-nav-section">
+        <div class="d2-nav-label">Explore</div>
+        <div class="d2-nav-item">🌐 <span>Browse Leagues</span></div>
+        <div class="d2-nav-item active">🏆 <span>Leaderboard</span></div>
+        <div class="d2-nav-item">📊 <span>Stats</span></div>
+      </div>
+      <div class="d2-nav-section">
+        <div class="d2-nav-label">My Activity</div>
+        <div class="d2-nav-item">📝 <span>My Entries</span></div>
+        <div class="d2-nav-item">✚ <span>Create League</span></div>
+        <div class="d2-nav-item">📋 <span>Creator Dashboard</span></div>
+      </div>
+      <div class="d2-sidebar-footer">
+        <div class="d2-wallet">
+          <div class="d2-wallet-dot"></div>
+          <span class="d2-wallet-addr mono">0x3f7c…a9d2</span>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px;">⬡ Base Mainnet</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="d2-main">
+      <div class="d2-topbar">
+        <div class="d2-page-title">Crypto Twitter World Cup 2026</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="badge badge-warn">⏱ Locks in 4d 12h</span>
+          <span class="badge badge-green">● 186 entries</span>
+          <button class="btn btn-outline btn-sm">Share ↗</button>
+        </div>
+      </div>
+      <div class="d2-content">
+        <!-- Metrics -->
+        <div class="d2-metrics">
+          <div class="d2-metric">
+            <div class="d2-metric-label">Prize Pool</div>
+            <div class="d2-metric-value" style="color:var(--success);">$8,835</div>
+          </div>
+          <div class="d2-metric">
+            <div class="d2-metric-label">Your Rank</div>
+            <div class="d2-metric-value" style="color:var(--primary-h);">#12 <span style="font-size:14px;" class="delta-up">▲3</span></div>
+          </div>
+          <div class="d2-metric">
+            <div class="d2-metric-label">Your Score</div>
+            <div class="d2-metric-value">38 pts</div>
+          </div>
+          <div class="d2-metric">
+            <div class="d2-metric-label">Groups Complete</div>
+            <div class="d2-metric-value">5 / 12</div>
+          </div>
+        </div>
+
+        <div class="d2-two-col">
+          <!-- Leaderboard -->
+          <div class="card" style="padding:0; overflow:hidden;">
+            <div class="d2-board-header">
+              <span class="d2-board-title">Leaderboard</span>
+              <span class="d2-board-updated" style="color:var(--muted);">Updated 2m ago</span>
+            </div>
+            <!-- header row -->
+            <div class="d2-board-row" style="font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding-top:6px; padding-bottom:6px; border-bottom:1px solid var(--border);">
+              <span>#</span><span>Player</span><span style="text-align:right;">Score</span><span style="text-align:right;">Chg</span>
+            </div>
+            <div class="d2-board-row">
+              <span class="d2-rank" style="color:var(--warning);">1</span>
+              <div class="d2-player"><div class="d2-avatar">V</div><span>vitalik.eth</span></div>
+              <span class="d2-score">47</span><span class="d2-delta delta-up">▲1</span>
+            </div>
+            <div class="d2-board-row">
+              <span class="d2-rank">2</span>
+              <div class="d2-player"><div class="d2-avatar">S</div><span>soccerpunk.eth</span></div>
+              <span class="d2-score">45</span><span class="d2-delta delta-same">—</span>
+            </div>
+            <div class="d2-board-row">
+              <span class="d2-rank">3</span>
+              <div class="d2-player"><div class="d2-avatar">C</div><span>cryptoking.eth</span></div>
+              <span class="d2-score">44</span><span class="d2-delta delta-down">▼2</span>
+            </div>
+            <div class="d2-board-row" style="opacity:.6;"><span class="d2-rank">4</span><div class="d2-player"><div class="d2-avatar">W</div><span>wagmifan.eth</span></div><span class="d2-score">42</span><span class="d2-delta delta-up">▲3</span></div>
+            <div class="d2-board-row" style="opacity:.5;"><span class="d2-rank">5</span><div class="d2-player"><div class="d2-avatar">A</div><span>anontrader.eth</span></div><span class="d2-score">41</span><span class="d2-delta delta-same">—</span></div>
+            <div class="d2-board-row" style="opacity:.4;"><span class="d2-rank">6</span><div class="d2-player"><div class="d2-avatar">D</div><span>defimaxi.eth</span></div><span class="d2-score">40</span><span class="d2-delta delta-down">▼1</span></div>
+            <div class="d2-board-row" style="opacity:.35;"><span class="d2-rank">7</span><div class="d2-player"><div class="d2-avatar">B</div><span>ballzdeep.eth</span></div><span class="d2-score">39</span><span class="d2-delta delta-up">▲2</span></div>
+            <div class="d2-board-row" style="opacity:.35;"><span class="d2-rank">8</span><div class="d2-player"><div class="d2-avatar">G</div><span>goatfooty.eth</span></div><span class="d2-score">39</span><span class="d2-delta delta-same">—</span></div>
+            <div class="d2-board-row" style="opacity:.3;"><span class="d2-rank">9</span><div class="d2-player"><div class="d2-avatar">H</div><span>0x4a..b3</span></div><span class="d2-score">38</span><span class="d2-delta delta-down">▼1</span></div>
+            <div class="d2-board-row" style="opacity:.3;"><span class="d2-rank">10</span><div class="d2-player"><div class="d2-avatar">J</div><span>ultrasound.eth</span></div><span class="d2-score">38</span><span class="d2-delta delta-same">—</span></div>
+            <div class="d2-board-row" style="opacity:.25;"><span class="d2-rank">11</span><div class="d2-player"><div class="d2-avatar">K</div><span>nfthunter.eth</span></div><span class="d2-score">38</span><span class="d2-delta delta-up">▲1</span></div>
+            <!-- YOU -->
+            <div class="d2-board-row highlight">
+              <span class="d2-rank" style="color:var(--primary-h);">12</span>
+              <div class="d2-player"><div class="d2-avatar" style="background:#1D3461; color:var(--primary-h);">Y</div><span style="color:var(--primary-h); font-weight:700;">You (stinky.eth)</span></div>
+              <span class="d2-score" style="color:var(--primary-h);">38</span>
+              <span class="d2-delta delta-up">▲3</span>
+            </div>
+          </div>
+
+          <!-- Side panel -->
+          <div>
+            <div class="d2-side-panel" style="margin-bottom:12px;">
+              <div class="d2-side-hdr">📊 Your Score Breakdown</div>
+              <div class="d2-league-info">
+                <div class="d2-info-row"><span class="d2-info-label">Group A</span><span class="d2-info-value" style="color:var(--success);">4 / 4 pts ✓ Perfect</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Group B</span><span class="d2-info-value">3 / 4 pts</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Group C</span><span class="d2-info-value">2 / 4 pts</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Group D</span><span class="d2-info-value" style="color:var(--success);">5 / 4 pts ✓ Perfect</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Group E</span><span class="d2-info-value">3 / 4 pts</span></div>
+                <div class="d2-info-row" style="opacity:.5;"><span class="d2-info-label">Groups F–L</span><span class="d2-info-value" style="color:var(--muted);">Pending…</span></div>
+                <div class="d2-info-row" style="border-top:1px solid var(--border); margin-top:4px; padding-top:10px;"><span class="d2-info-label" style="color:var(--fg); font-weight:700;">Total</span><span class="d2-info-value" style="color:var(--primary-h); font-size:16px;">38 pts</span></div>
+              </div>
+            </div>
+            <div class="d2-side-panel">
+              <div class="d2-side-hdr">🏅 League Info</div>
+              <div class="d2-league-info">
+                <div class="d2-info-row"><span class="d2-info-label">Entry fee</span><span class="d2-info-value">50 USDC</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Prize pool</span><span class="d2-info-value" style="color:var(--success);">$8,835</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Creator fee</span><span class="d2-info-value">3%</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Chain</span><span class="d2-info-value">⬡ Base</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Revision policy</span><span class="d2-info-value">Free revisions</span></div>
+                <div class="d2-info-row"><span class="d2-info-label">Submit revised predictions</span><span class="d2-info-value"><button class="btn btn-outline btn-sm">Edit ✎</button></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     DIRECTION 3 — Field: Prediction Form (desktop)
+════════════════════════════════════════════════════════════════ -->
+<div class="direction" id="dir-3">
+  <nav class="d3-nav">
+    <div class="d3-logo">WC<span>2</span></div>
+    <div class="d3-progress-global">
+      <div class="d3-prog-label">8 / 12 groups complete</div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:66%; background:var(--primary);"></div>
+      </div>
+    </div>
+    <div class="d3-nav-right">
+      <span class="badge badge-warn">⏱ Locks in 4d 12h</span>
+      <span class="badge badge-muted mono">0x3f…a9d2</span>
+    </div>
+  </nav>
+
+  <div class="d3-content">
+    <div class="d3-form-header">
+      <div>
+        <div style="color:var(--muted); font-size:12px; margin-bottom:4px;">Entering · Crypto Twitter World Cup 2026</div>
+        <div class="d3-league-name">Rank all 12 groups to enter</div>
+      </div>
+      <div style="display:flex; gap:8px; margin-left:auto;">
+        <span class="d3-pool-pill">$8,835 pool</span>
+        <span class="d3-lock-pill">⏱ 4d 12h to lock</span>
+      </div>
+    </div>
+
+    <!-- Group grid -->
+    <div class="d3-group-grid">
+      <!-- Group A — done -->
+      <div class="d3-group-card done">
+        <div class="d3-group-card-hdr">
+          <span>Group A</span>
+          <span class="done-icon">✓</span>
+        </div>
+        <div class="d3-team-row">
+          <div class="d3-pos p1">1</div>
+          <span style="font-size:16px;">🇦🇷</span>
+          <span class="d3-team-name">Argentina</span>
+          <span class="d3-odds">68%</span>
+          <span class="d3-drag-handle">⠿</span>
+        </div>
+        <div class="d3-team-row">
+          <div class="d3-pos p2">2</div>
+          <span style="font-size:16px;">🇲🇽</span>
+          <span class="d3-team-name">Mexico</span>
+          <span class="d3-odds">42%</span>
+          <span class="d3-drag-handle">⠿</span>
+        </div>
+        <div class="d3-team-row">
+          <div class="d3-pos">3</div>
+          <span style="font-size:16px;">🇵🇱</span>
+          <span class="d3-team-name">Poland</span>
+          <span class="d3-odds">31%</span>
+          <span class="d3-drag-handle">⠿</span>
+        </div>
+        <div class="d3-team-row">
+          <div class="d3-pos">4</div>
+          <span style="font-size:16px;">🇸🇦</span>
+          <span class="d3-team-name">Saudi Arabia</span>
+          <span class="d3-odds">12%</span>
+          <span class="d3-drag-handle">⠿</span>
+        </div>
+      </div>
+
+      <!-- Group B — done -->
+      <div class="d3-group-card done">
+        <div class="d3-group-card-hdr">
+          <span>Group B</span>
+          <span class="done-icon">✓</span>
+        </div>
+        <div class="d3-team-row"><div class="d3-pos p1">1</div><span style="font-size:16px;">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="d3-team-name">England</span><span class="d3-odds">71%</span><span class="d3-drag-handle">⠿</span></div>
+        <div class="d3-team-row"><div class="d3-pos p2">2</div><span style="font-size:16px;">🇮🇷</span><span class="d3-team-name">Iran</span><span class="d3-odds">29%</span><span class="d3-drag-handle">⠿</span></div>
+        <div class="d3-team-row"><div class="d3-pos">3</div><span style="font-size:16px;">🇺🇸</span><span class="d3-team-name">USA</span><span class="d3-odds">55%</span><span class="d3-drag-handle">⠿</span></div>
+        <div class="d3-team-row"><div class="d3-pos">4</div><span style="font-size:16px;">🏴󠁧󠁢󠁷󠁬󠁳󠁿</span><span class="d3-team-name">Wales</span><span class="d3-odds">18%</span><span class="d3-drag-handle">⠿</span></div>
+      </div>
+
+      <!-- Group C — in progress (highlighted) -->
+      <div class="d3-group-card" style="border-color:var(--primary); box-shadow:0 0 0 1px var(--primary)20;">
+        <div class="d3-group-card-hdr" style="background:var(--elevated); color:var(--primary-h);">
+          <span>Group C <span style="font-size:11px; color:var(--muted);">— drag to rank</span></span>
+          <span style="font-size:11px; color:var(--muted);">1 / 4 set</span>
+        </div>
+        <div class="d3-team-row" style="background:var(--elevated)55;">
+          <div class="d3-pos p1">1</div>
+          <span style="font-size:16px;">🇫🇷</span>
+          <span class="d3-team-name">France</span>
+          <span class="d3-odds">74%</span>
+          <span class="d3-drag-handle" style="opacity:.8;">⠿</span>
+        </div>
+        <div class="d3-team-row" style="border: 1px dashed var(--border); margin: 4px 8px; border-radius:4px; background:transparent;">
+          <div class="d3-pos">2</div>
+          <span style="color:var(--muted); font-size:13px; font-style:italic;">Drop team here…</span>
+        </div>
+        <div class="d3-team-row"><div class="d3-pos">—</div><span style="font-size:16px;">🇩🇰</span><span class="d3-team-name">Denmark</span><span class="d3-odds">48%</span><span class="d3-drag-handle">⠿</span></div>
+        <div class="d3-team-row"><div class="d3-pos">—</div><span style="font-size:16px;">🇹🇳</span><span class="d3-team-name">Tunisia</span><span class="d3-odds">11%</span><span class="d3-drag-handle">⠿</span></div>
+      </div>
+
+      <!-- Group D — unstarted -->
+      <div class="d3-group-card" style="opacity:.7;">
+        <div class="d3-group-card-hdr" style="color:var(--muted);">
+          <span>Group D</span>
+          <span style="font-size:11px;">Not ranked</span>
+        </div>
+        <div class="d3-team-row"><div class="d3-pos">—</div><span style="font-size:16px;">🇫🇷</span><span class="d3-team-name">France</span><span class="d3-drag-handle">⠿</span></div>
+        <div class="d3-team-row"><div class="d3-pos">—</div><span style="font-size:16px;">🇩🇰</span><span class="d3-team-name">Denmark</span><span class="d3-drag-handle">⠿</span></div>
+        <div class="d3-team-row"><div class="d3-pos">—</div><span style="font-size:16px;">🇦🇺</span><span class="d3-team-name">Australia</span><span class="d3-drag-handle">⠿</span></div>
+        <div class="d3-team-row"><div class="d3-pos">—</div><span style="font-size:16px;">🇹🇳</span><span class="d3-team-name">Tunisia</span><span class="d3-drag-handle">⠿</span></div>
+      </div>
+
+      <!-- Groups E–L placeholder -->
+      <div class="d3-group-card done"><div class="d3-group-card-hdr"><span>Group E</span><span class="done-icon">✓</span></div><div style="padding:12px 14px; color:var(--muted); font-size:13px; text-align:center;">Ranked ✓</div></div>
+      <div class="d3-group-card done"><div class="d3-group-card-hdr"><span>Group F</span><span class="done-icon">✓</span></div><div style="padding:12px 14px; color:var(--muted); font-size:13px; text-align:center;">Ranked ✓</div></div>
+      <div class="d3-group-card done"><div class="d3-group-card-hdr"><span>Group G</span><span class="done-icon">✓</span></div><div style="padding:12px 14px; color:var(--muted); font-size:13px; text-align:center;">Ranked ✓</div></div>
+      <div class="d3-group-card done"><div class="d3-group-card-hdr"><span>Group H</span><span class="done-icon">✓</span></div><div style="padding:12px 14px; color:var(--muted); font-size:13px; text-align:center;">Ranked ✓</div></div>
+      <div class="d3-group-card" style="opacity:.5;"><div class="d3-group-card-hdr" style="color:var(--muted);"><span>Group I</span><span style="font-size:11px;">Not ranked</span></div><div style="padding:12px 14px; color:var(--muted); font-size:13px; text-align:center;">Not started</div></div>
+      <div class="d3-group-card" style="opacity:.4;"><div class="d3-group-card-hdr" style="color:var(--muted);"><span>Group J</span><span style="font-size:11px;">Not ranked</span></div><div style="padding:12px 14px; color:var(--muted); font-size:13px; text-align:center;">Not started</div></div>
+      <div class="d3-group-card" style="opacity:.3;"><div class="d3-group-card-hdr" style="color:var(--muted);"><span>Group K</span><span style="font-size:11px;">Not ranked</span></div><div style="padding:12px 14px; color:var(--muted); font-size:13px; text-align:center;">Not started</div></div>
+      <div class="d3-group-card" style="opacity:.25;"><div class="d3-group-card-hdr" style="color:var(--muted);"><span>Group L</span><span style="font-size:11px;">Not ranked</span></div><div style="padding:12px 14px; color:var(--muted); font-size:13px; text-align:center;">Not started</div></div>
+    </div>
+  </div>
+
+  <!-- Sticky footer bar -->
+  <div class="d3-footer-bar">
+    <div style="font-size:13px; color:var(--muted);">Entry fee: <strong style="color:var(--fg);">50 USDC</strong> → Prize pool: <strong style="color:var(--success);">$8,835.00</strong> · Creator: 3% · Dev: 2%</div>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px;">
+      <span style="font-size:13px; color:var(--warning);">⚠ 4 groups remaining + tiebreaker</span>
+      <button class="btn btn-primary" style="opacity:.5; cursor:not-allowed;" disabled>Submit Entry — 50 USDC</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     DIRECTION 4 — Victory: Claim Payout Screen
+════════════════════════════════════════════════════════════════ -->
+<div class="direction" id="dir-4">
+  <nav class="d1-nav">
+    <div class="d1-logo">WC<span>2</span> Leagues</div>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px;">
+      <span class="badge badge-muted mono">0x3f…a9d2</span>
+    </div>
+  </nav>
+
+  <div class="d4-page">
+    <div class="d4-league-meta">
+      <div class="d4-status">✓ League Resolved</div>
+      <h2>Crypto Twitter World Cup 2026</h2>
+      <p>186 players · 8,835 USDC prize pool · Dispute window closed</p>
+    </div>
+
+    <!-- Win card -->
+    <div class="d4-win-card">
+      <div class="d4-win-trophy">🏆</div>
+      <div class="d4-win-label">Your Winnings</div>
+      <div class="d4-win-amount">2,208.75 USDC</div>
+      <div class="d4-win-sub">Prize pool share — claimable now</div>
+      <div class="d4-win-rank">
+        <span class="badge badge-warn">🥇 Ranked #1</span>
+        <span style="color:var(--muted); font-size:13px;">out of 186 entries</span>
+        <span class="delta-up" style="font-size:14px;">▲11 from start</span>
+      </div>
+    </div>
+
+    <!-- Score breakdown -->
+    <div class="d4-breakdown" style="margin-bottom:20px;">
+      <div class="d4-breakdown-hdr">Score Breakdown</div>
+      <div class="d4-bd-row">
+        <span class="d4-bd-label">Group predictions correct</span>
+        <span class="d4-bd-value">47 / 48 positions</span>
+      </div>
+      <div class="d4-bd-row">
+        <span class="d4-bd-label">Perfect groups</span>
+        <span class="d4-bd-value" style="color:var(--success);">6 × +1 bonus = 6 pts</span>
+      </div>
+      <div class="d4-bd-row">
+        <span class="d4-bd-label">Tiebreaker</span>
+        <span class="d4-bd-value">142 goals (actual: 139) — closest</span>
+      </div>
+      <div class="d4-bd-row" style="background:var(--elevated);">
+        <span class="d4-bd-label" style="color:var(--fg); font-weight:700;">Total Score</span>
+        <span class="d4-bd-value" style="color:var(--primary-h); font-size:18px;">53 pts</span>
+      </div>
+    </div>
+
+    <!-- Payout breakdown -->
+    <div class="d4-breakdown" style="margin-bottom:24px;">
+      <div class="d4-breakdown-hdr">Payout Breakdown</div>
+      <div class="d4-bd-row"><span class="d4-bd-label">Total prize pool</span><span class="d4-bd-value">8,835.00 USDC</span></div>
+      <div class="d4-bd-row"><span class="d4-bd-label">Your share (25%)</span><span class="d4-bd-value green">2,208.75 USDC</span></div>
+      <div class="d4-bd-row"><span class="d4-bd-label">Creator fee (3%)</span><span class="d4-bd-value">265.05 USDC</span></div>
+      <div class="d4-bd-row"><span class="d4-bd-label">Dev fee (2%)</span><span class="d4-bd-value">176.70 USDC</span></div>
+      <div class="d4-bd-row"><span class="d4-bd-label">Contract</span><span class="d4-bd-value mono" style="font-size:12px; color:var(--primary-h);">0x4B3…2Ec ↗</span></div>
+    </div>
+
+    <!-- Claim CTA -->
+    <div class="d4-claim-section">
+      <p class="d4-claim-note">Your winnings are locked in the smart contract and claimable only by you.<br>Claim expires in <strong style="color:var(--warning);">89 days</strong> — don't leave it too long.</p>
+      <button class="btn btn-primary btn-lg" style="width:100%; justify-content:center;">🏆 Claim 2,208.75 USDC</button>
+      <div class="d4-share-row">
+        <button class="btn btn-outline btn-sm">Share on X ↗</button>
+        <button class="btn btn-outline btn-sm">Share on Telegram</button>
+        <button class="btn btn-outline btn-sm">Copy share card</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(n) {
+    document.querySelectorAll('.direction').forEach(d => d.classList.remove('active'));
+    document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('dir-' + n).classList.add('active');
+    document.querySelectorAll('.dir-btn')[n-1].classList.add('active');
+  }
+</script>
+</body>
+</html>
