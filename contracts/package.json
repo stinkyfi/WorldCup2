@@ -1,0 +1,19 @@
+{
+  "name": "worldcup2-contracts",
+  "version": "1.0.0",
+  "description": "WorldCup2 smart contracts — Hardhat TypeScript project",
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "clean": "hardhat clean"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.4",
+    "hardhat": "^3.4.1",
+    "typescript": "^5.7.3"
+  }
+}
