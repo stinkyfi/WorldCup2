@@ -84,6 +84,9 @@ export async function deployLeagueFactory() {
     1_000_000_000_000_000_000n,   // minEntryAmount: 1 token (18-decimal)
   ]);
 
+  const publicClient = await connection.viem.getPublicClient();
+  const { timestamp: latestTimestamp } = await publicClient.getBlock({ blockTag: "latest" });
+
   return {
     leagueFactory,
     whitelistRegistry,
@@ -96,6 +99,63 @@ export async function deployLeagueFactory() {
     otherAccounts,
     connection,
     creationFee,
+    latestTimestamp,
+  };
+}
+
+// ─── Story 1.5: League fixtures ──────────────────────────────────────────────
+
+const DEFAULT_ENTRY_FEE = 5_000_000_000_000_000_000n; // 5 tokens (18-decimal)
+
+export async function deployLeague() {
+  const connection = await hre.network.getOrCreate();
+  const [owner, devWalletClient, creator, oracle, player1, player2, ...rest] =
+    await connection.viem.getWalletClients();
+
+  const token = await connection.viem.deployContract("MockERC20", ["TestToken", "TTK"]);
+
+  // Mint enough tokens for players (10 entries each)
+  await token.write.mint([player1.account.address, DEFAULT_ENTRY_FEE * 10n]);
+  await token.write.mint([player2.account.address, DEFAULT_ENTRY_FEE * 10n]);
+
+  // Use EVM block timestamp so lockTime stays in the future even after time-advancing tests
+  const publicClient = await connection.viem.getPublicClient();
+  const latestBlock = await publicClient.getBlock({ blockTag: "latest" });
+  const lockTime = latestBlock.timestamp + 7n * 24n * 60n * 60n;
+
+  const params = {
+    token: token.address,
+    entryFee: DEFAULT_ENTRY_FEE,
+    maxEntries: 100n,
+    maxEntriesPerWallet: 5n,
+    minThreshold: 2n,
+    revisionPolicy: 0,
+    lockTime,
+  } as const;
+
+  const league = await connection.viem.deployContract("League", [
+    creator.account.address,
+    oracle.account.address,
+    devWalletClient.account.address,
+    200n,  // devFeeBps = 2%
+    300n,  // creatorFeeCap = 3%
+    params,
+  ]);
+
+  return {
+    league,
+    token,
+    owner,
+    devWallet: devWalletClient,
+    creator,
+    oracle,
+    player1,
+    player2,
+    otherAccounts: rest,
+    connection,
+    entryFee: DEFAULT_ENTRY_FEE,
+    lockTime,
+    params,
   };
 }
 

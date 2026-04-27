@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { deployLeagueFactory } from "./fixtures/index.js";
 
 // Helper: build a valid LeagueParams tuple for tests.
-// lockTime is set 7 days from a fixed future timestamp to keep tests deterministic.
-function makeValidParams(tokenAddress: `0x${string}`) {
+// baseTimestamp should be the EVM's current block timestamp to keep lockTime in the future.
+function makeValidParams(tokenAddress: `0x${string}`, baseTimestamp?: bigint) {
+  const base = baseTimestamp ?? BigInt(Math.floor(Date.now() / 1000));
   return {
     token: tokenAddress,
     entryFee: 5_000_000_000_000_000_000n, // 5 tokens (18-decimal)
@@ -12,7 +13,7 @@ function makeValidParams(tokenAddress: `0x${string}`) {
     maxEntriesPerWallet: 5n,
     minThreshold: 10n,
     revisionPolicy: 0,   // RevisionPolicy.Locked
-    lockTime: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60),
+    lockTime: base + 7n * 24n * 60n * 60n,
   } as const;
 }
 
@@ -20,9 +21,9 @@ describe("LeagueFactory", () => {
   // ─── AC1: Happy-path league creation ────────────────────────────────────────
 
   it("createLeague deploys a League and emits LeagueCreated", async () => {
-    const { leagueFactory, creator, token, creationFee, connection } =
+    const { leagueFactory, creator, token, creationFee, connection, latestTimestamp } =
       await deployLeagueFactory();
-    const params = makeValidParams(token.address);
+    const params = makeValidParams(token.address, latestTimestamp);
 
     const txHash = await leagueFactory.write.createLeague([params], {
       account: creator.account,
@@ -49,9 +50,9 @@ describe("LeagueFactory", () => {
   });
 
   it("deployed League address is a real contract with bytecode", async () => {
-    const { leagueFactory, creator, token, creationFee, connection } =
+    const { leagueFactory, creator, token, creationFee, connection, latestTimestamp } =
       await deployLeagueFactory();
-    const params = makeValidParams(token.address);
+    const params = makeValidParams(token.address, latestTimestamp);
 
     const txHash = await leagueFactory.write.createLeague([params], {
       account: creator.account,
@@ -71,8 +72,8 @@ describe("LeagueFactory", () => {
   });
 
   it("createLeague registers league in getLeagues", async () => {
-    const { leagueFactory, creator, token, creationFee } = await deployLeagueFactory();
-    const params = makeValidParams(token.address);
+    const { leagueFactory, creator, token, creationFee, latestTimestamp } = await deployLeagueFactory();
+    const params = makeValidParams(token.address, latestTimestamp);
 
     await leagueFactory.write.createLeague([params], {
       account: creator.account,
@@ -85,9 +86,9 @@ describe("LeagueFactory", () => {
   });
 
   it("creation fee is forwarded to devWallet in full", async () => {
-    const { leagueFactory, creator, devWallet, token, creationFee, connection } =
+    const { leagueFactory, creator, devWallet, token, creationFee, connection, latestTimestamp } =
       await deployLeagueFactory();
-    const params = makeValidParams(token.address);
+    const params = makeValidParams(token.address, latestTimestamp);
 
     const publicClient = await connection.viem.getPublicClient();
     const balanceBefore = await publicClient.getBalance({
@@ -156,13 +157,13 @@ describe("LeagueFactory", () => {
   });
 
   it("setCreationsPaused(false) re-enables createLeague", async () => {
-    const { leagueFactory, owner, creator, token, creationFee } =
+    const { leagueFactory, owner, creator, token, creationFee, latestTimestamp } =
       await deployLeagueFactory();
 
     await leagueFactory.write.setCreationsPaused([true], { account: owner.account });
     await leagueFactory.write.setCreationsPaused([false], { account: owner.account });
 
-    const params = makeValidParams(token.address);
+    const params = makeValidParams(token.address, latestTimestamp);
     // Should not throw
     await leagueFactory.write.createLeague([params], {
       account: creator.account,
@@ -217,8 +218,8 @@ describe("LeagueFactory", () => {
   // ─── AC5: Pagination ─────────────────────────────────────────────────────────
 
   it("getLeagues returns correctly paginated slices", async () => {
-    const { leagueFactory, creator, token, creationFee } = await deployLeagueFactory();
-    const params = makeValidParams(token.address);
+    const { leagueFactory, creator, token, creationFee, latestTimestamp } = await deployLeagueFactory();
+    const params = makeValidParams(token.address, latestTimestamp);
 
     // Create 3 leagues
     for (let i = 0; i < 3; i++) {

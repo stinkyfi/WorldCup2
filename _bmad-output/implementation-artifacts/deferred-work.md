@@ -11,6 +11,11 @@
 - **NodeNext `.js` extension requirement undocumented** — `module: NodeNext` requires `.js` suffixes on all relative imports in TypeScript source. Story 1.2+ authors must follow this pattern; consider adding a note to the project conventions.
 - **`skipLibCheck: true`** — Standard Hardhat practice but reduces type-safety coverage in plugin declaration files.
 
+## Deferred from: code review of 1-5-leaguesol.md (2026-04-27)
+
+- **`creator` / `oracleController` immutables unused in League** — Stored for factory wiring and later stories (oracle integration, creator flows); no action in 1.5.
+- **`_entrantsList` populated but unread** — May support future on-chain enumeration or indexer hints; removing would save gas but could drop a planned hook.
+
 ## Deferred from: code review of 1-3-oraclecontrollersol (2026-04-27)
 
 - **B2+E2: `extendGracePeriod` before `setGroupDeadline` creates silent past deadline** — If `extendGracePeriod` is called on a group where `expectedDeadline` is still `0`, the result is `additionalSeconds` as an absolute Unix timestamp, which may be in the past. Additionally, extending by `0` seconds emits a `GracePeriodExtended` event with no change, which could confuse the indexer. Acceptable for MVP; Story 1.7 deploy scripts should always call `setGroupDeadline` before any `extendGracePeriod`.
