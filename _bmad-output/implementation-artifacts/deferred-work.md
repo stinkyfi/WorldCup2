@@ -11,6 +11,10 @@
 - **NodeNext `.js` extension requirement undocumented** — `module: NodeNext` requires `.js` suffixes on all relative imports in TypeScript source. Story 1.2+ authors must follow this pattern; consider adding a note to the project conventions.
 - **`skipLibCheck: true`** — Standard Hardhat practice but reduces type-safety coverage in plugin declaration files.
 
+## Deferred from: code review of 1-6-contract-test-suite-and-slither.md (2026-04-27)
+
+- **Solidity branch coverage (≥85% per epic)** — Hardhat 3 coverage output used here is line/statement oriented; no branch counters in `coverage/lcov.info`. Revisit when Slither runs on HH3 artifacts or another branch-aware Solidity coverage pipeline is wired in.
+
 ## Deferred from: code review of 1-5-leaguesol.md (2026-04-27)
 
 - **`creator` / `oracleController` immutables unused in League** — Stored for factory wiring and later stories (oracle integration, creator flows); no action in 1.5.

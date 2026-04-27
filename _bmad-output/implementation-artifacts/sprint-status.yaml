@@ -52,7 +52,7 @@ development_status:
   1-3-oraclecontrollersol: done
   1-4-leaguefactorysol: done
   1-5-leaguesol: done
-  1-6-contract-test-suite-and-slither: backlog
+  1-6-contract-test-suite-and-slither: done
   1-7-multi-chain-deploy-scripts: backlog
   1-8-backend-repo-init-and-config: backlog
   1-9-frontend-repo-init-and-design-system: backlog
