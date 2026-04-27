@@ -51,4 +51,52 @@ export async function deployOracleControllerStaging() {
   return { oracleController, owner, oracle, otherAccounts, connection };
 }
 
+// ─── Story 1.4: LeagueFactory fixtures ───────────────────────────────────────
+
+export async function deployLeagueFactory() {
+  const connection = await hre.network.getOrCreate();
+  const [owner, devWallet, creator, oracle, ...otherAccounts] =
+    await connection.viem.getWalletClients();
+
+  // Deploy dependencies in order
+  const whitelistRegistry = await connection.viem.deployContract("WhitelistRegistry", [
+    owner.account.address,
+  ]);
+  const token = await connection.viem.deployContract("MockERC20", ["Test Token", "TST"]);
+  // Approve the test token so createLeague passes the whitelist check
+  await whitelistRegistry.write.approveToken([token.address]);
+
+  const oracleController = await connection.viem.deployContract("OracleController", [
+    owner.account.address,
+    oracle.account.address,
+    false, // stagingMode = false
+  ]);
+
+  const creationFee = 10_000_000_000_000_000n; // 0.01 ETH
+  const leagueFactory = await connection.viem.deployContract("LeagueFactory", [
+    owner.account.address,
+    whitelistRegistry.address,
+    oracleController.address,
+    devWallet.account.address,
+    creationFee,
+    200n,                         // devFeeBps: 2%
+    300n,                         // creatorFeeCap: 3%
+    1_000_000_000_000_000_000n,   // minEntryAmount: 1 token (18-decimal)
+  ]);
+
+  return {
+    leagueFactory,
+    whitelistRegistry,
+    oracleController,
+    owner,
+    devWallet,
+    creator,
+    oracle,
+    token,
+    otherAccounts,
+    connection,
+    creationFee,
+  };
+}
+
 export {};
