@@ -1,0 +1,63 @@
+name: Deploy staging (testnets)
+
+# Pushes updated contracts/deployments/<network>.json when enabled.
+# GitHub automatically masks `secrets.*` values in logs — never print keys.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-staging-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-testnets:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && vars.ENABLE_STAGING_DEPLOY == 'true')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    env:
+      DEPLOYER_KEY: ${{ secrets.DEPLOYER_KEY }}
+      ORACLE_ADDRESS: ${{ secrets.ORACLE_ADDRESS }}
+      DEV_WALLET_ADDRESS: ${{ secrets.DEV_WALLET_ADDRESS }}
+      RPC_URL_BASE_TESTNET: ${{ secrets.RPC_URL_BASE_TESTNET }}
+      RPC_URL_ETHEREUM_SEPOLIA: ${{ secrets.RPC_URL_ETHEREUM_SEPOLIA }}
+      RPC_URL_SONIC_TESTNET: ${{ secrets.RPC_URL_SONIC_TESTNET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - run: npm ci
+      - run: npm run compile
+      - name: Deploy Base Sepolia
+        run: npm run deploy -- --network base-testnet
+      - name: Deploy Ethereum Sepolia
+        run: npm run deploy -- --network ethereum-sepolia
+      - name: Deploy Sonic Blaze testnet
+        run: npm run deploy -- --network sonic-testnet
+      - name: Commit deployment manifests
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add contracts/deployments/*.json
+          if git diff --staged --quiet; then
+            echo "No deployment JSON changes to commit."
+          else
+            git commit -m "chore(contracts): staging testnet deployments [skip ci]"
+            git push
+          fi

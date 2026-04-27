@@ -1,0 +1,102 @@
+name: CI
+
+# Uses secrets only in future extension; never echo key material — GitHub masks `secrets.*` in logs.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - run: npm ci
+      - run: npm run compile
+      - run: npm run lint
+      - run: npm test
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  slither-main:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [contracts]
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: npm run compile
+      - name: pip install Slither
+        run: pip install slither-analyzer
+      - name: Slither (fail on High when analysis completes)
+        shell: bash
+        run: |
+          set +e
+          python -m slither . --fail-high 2>&1 | tee slither.log
+          code=$?
+          set -e
+          if [[ "$code" -eq 0 ]]; then
+            echo "Slither completed with no high-severity findings."
+            exit 0
+          fi
+          if grep -q "hh3-artifact" slither.log || grep -q "KeyError: 'output'" slither.log; then
+            echo "::notice title=Slither / Hardhat 3::Slither could not analyse HH3 artifacts (see contracts/slither-notes.md). Job passes until crytic-compile supports this layout."
+            exit 0
+          fi
+          echo "Slither failed with an unexpected error (exit $code)."
+          exit 1
