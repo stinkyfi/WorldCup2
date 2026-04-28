@@ -111,12 +111,12 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 6: Leaderboard, Scoring & Score Breakdown
   # ─────────────────────────────────────────────────────────────
-  epic-6: in-progress
+  epic-6: done
   6-1-indexer-score-calculation-engine: done
-  6-2-leaderboard-page-rank-and-rank-delta: backlog
-  6-3-score-breakdown-per-player: backlog
-  6-4-tiebreaker-split-logic: backlog
-  6-5-creator-view-all-predictions-after-lock: backlog
+  6-2-leaderboard-page-rank-and-rank-delta: done
+  6-3-score-breakdown-per-player: done
+  6-4-tiebreaker-split-logic: done
+  6-5-creator-view-all-predictions-after-lock: done
   6-6-full-prediction-history-post-resolution: done
   epic-6-retrospective: optional
 

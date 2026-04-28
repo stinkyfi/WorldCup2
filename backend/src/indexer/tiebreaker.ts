@@ -14,11 +14,28 @@ export function tiebreakerDistance(params: { predictedTotalGoals: number; actual
 }
 
 /**
- * Sort rule (Story 6.4):
- * - Higher totalPoints first
- * - Then smaller tiebreaker distance first
- * - If still tied (same score + same distance), entries are considered fully tied (stable order by wallet+index)
+ * Assign competition ranks ("1224" style): ties share rank; next rank skips occupied slots.
+ * Requires entries sorted strongest-first (same order as rankEntriesWithTiebreaker output).
+ * Story 6.4 — FR63: identical score + identical tiebreaker distance ⇒ same displayed rank.
  */
+export function assignCompetitionRanks(
+  ordered: ReadonlyArray<{ totalPoints: number; distance: number }>,
+): number[] {
+  if (ordered.length === 0) return [];
+  const ranks: number[] = [];
+  for (let i = 0; i < ordered.length; i++) {
+    if (i === 0) ranks.push(1);
+    else {
+      const prev = ordered[i - 1]!;
+      const cur = ordered[i]!;
+      if (cur.totalPoints === prev.totalPoints && cur.distance === prev.distance) ranks.push(ranks[i - 1]!);
+      else ranks.push(i + 1);
+    }
+  }
+  return ranks;
+}
+
+/** Sort strongest-first: points desc, tiebreaker distance asc, then wallet/index for deterministic order. */
 export function rankEntriesWithTiebreaker(params: {
   entries: RankedEntry[];
   actualTotalGoals: number;

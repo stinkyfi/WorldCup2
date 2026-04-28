@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { prisma } from "../db.js";
+import { assignCompetitionRanks, rankEntriesWithTiebreaker } from "./tiebreaker.js";
 import { computeGroupScore } from "./scoring.js";
 import { createPublicClient, getAddress, http, type Address } from "viem";
 import { oracleControllerAbi } from "../lib/oracleControllerAbi.js";
@@ -56,7 +57,13 @@ export async function runResultsPostedIndexerOnce(params?: { chainId?: number })
       // Fetch all stored entries for leagues on this chain (we only have leagueAddress, not leagueId).
       const entries = await prisma.entry.findMany({
         where: { chainId },
-        select: { leagueAddress: true, walletAddress: true, entryIndex: true, groups: true },
+        select: {
+          leagueAddress: true,
+          walletAddress: true,
+          entryIndex: true,
+          groups: true,
+          tiebreakerTotalGoals: true,
+        },
       });
 
       for (const e of entries) {
@@ -103,7 +110,7 @@ export async function runResultsPostedIndexerOnce(params?: { chainId?: number })
         const leagueEntries = entries.filter((e) => e.leagueAddress === leagueAddress);
         if (leagueEntries.length === 0) continue;
 
-        const totals = await Promise.all(
+        const totalsRaw = await Promise.all(
           leagueEntries.map(async (e) => {
             const sum = await prisma.score.aggregate({
               where: {
@@ -114,15 +121,52 @@ export async function runResultsPostedIndexerOnce(params?: { chainId?: number })
               },
               _sum: { points: true },
             });
-            return { ...e, totalPoints: Number(sum._sum.points ?? 0) };
+            return {
+              leagueAddress,
+              walletAddress: e.walletAddress,
+              entryIndex: e.entryIndex,
+              tiebreakerTotalGoals: e.tiebreakerTotalGoals,
+              totalPoints: Number(sum._sum.points ?? 0),
+            };
           }),
         );
 
-        totals.sort((a, b) => b.totalPoints - a.totalPoints || a.walletAddress.localeCompare(b.walletAddress) || a.entryIndex - b.entryIndex);
+        let rankedRows: Array<{ walletAddress: string; entryIndex: number; totalPoints: number; rank: number }>;
+        if (actualTotalGoals !== null) {
+          const ranked = rankEntriesWithTiebreaker({
+            entries: totalsRaw.map((t) => ({
+              walletAddress: t.walletAddress,
+              entryIndex: t.entryIndex,
+              totalPoints: t.totalPoints,
+              tiebreakerTotalGoals: t.tiebreakerTotalGoals,
+            })),
+            actualTotalGoals,
+          });
+          const ranks = assignCompetitionRanks(ranked.map((r) => ({ totalPoints: r.totalPoints, distance: r.distance })));
+          rankedRows = ranked.map((r, i) => ({
+            walletAddress: r.walletAddress,
+            entryIndex: r.entryIndex,
+            totalPoints: r.totalPoints,
+            rank: ranks[i]!,
+          }));
+        } else {
+          const sorted = [...totalsRaw].sort(
+            (a, b) =>
+              b.totalPoints - a.totalPoints ||
+              a.walletAddress.localeCompare(b.walletAddress) ||
+              a.entryIndex - b.entryIndex,
+          );
+          rankedRows = sorted.map((t, i) => ({
+            walletAddress: t.walletAddress,
+            entryIndex: t.entryIndex,
+            totalPoints: t.totalPoints,
+            rank: i + 1,
+          }));
+        }
 
-        for (let i = 0; i < totals.length; i++) {
-          const t = totals[i]!;
-          const newRank = i + 1;
+        for (let i = 0; i < rankedRows.length; i++) {
+          const t = rankedRows[i]!;
+          const newRank = t.rank;
           const existing = await prisma.leaderboardRow.findUnique({
             where: {
               chainId_leagueAddress_walletAddress_entryIndex: {

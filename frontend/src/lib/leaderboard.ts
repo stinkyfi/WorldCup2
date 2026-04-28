@@ -6,6 +6,8 @@ export type LeaderboardRow = {
   totalPoints: number;
   rank: number;
   rankDelta: number;
+  /** Same rank number as another row (shared placement — prize split per Epic 8 rules). */
+  tied?: boolean;
   updatedAt: string;
 };
 

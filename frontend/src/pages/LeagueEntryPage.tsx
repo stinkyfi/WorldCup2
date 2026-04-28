@@ -192,7 +192,14 @@ function ResolvedEntrySection(props: {
             <div className="flex flex-wrap items-center gap-4 rounded-md border border-border bg-background/40 px-4 py-3">
               <div>
                 <div className="text-xs text-muted-foreground">Rank</div>
-                <div className="text-lg font-semibold text-foreground">{rowForEntry?.rank ?? "—"}</div>
+                <div className="flex flex-wrap items-center gap-2 text-lg font-semibold text-foreground">
+                  <span>{rowForEntry?.rank ?? "—"}</span>
+                  {rowForEntry?.tied ? (
+                    <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+                      Tied
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Score</div>

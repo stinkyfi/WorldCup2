@@ -33,6 +33,11 @@ export const leaderboardRoutes: FastifyPluginAsync = async (fastify) => {
       select: { walletAddress: true, entryIndex: true, totalPoints: true, rank: true, prevRank: true, updatedAt: true },
     });
 
+    const rankCounts = new Map<number, number>();
+    for (const r of rows) {
+      rankCounts.set(r.rank, (rankCounts.get(r.rank) ?? 0) + 1);
+    }
+
     return sendSuccess(reply, {
       lastUpdatedAt: league?.lastCalculatedAt?.toISOString() ?? null,
       rows: rows.map((r) => ({
@@ -41,6 +46,7 @@ export const leaderboardRoutes: FastifyPluginAsync = async (fastify) => {
         totalPoints: r.totalPoints,
         rank: r.rank,
         rankDelta: r.prevRank ? r.prevRank - r.rank : 0,
+        tied: (rankCounts.get(r.rank) ?? 0) > 1,
         updatedAt: r.updatedAt.toISOString(),
       })),
     });

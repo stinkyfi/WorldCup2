@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { rankEntriesWithTiebreaker, splitEqualPrize } from "../src/indexer/tiebreaker.js";
+import {
+  assignCompetitionRanks,
+  rankEntriesWithTiebreaker,
+  splitEqualPrize,
+} from "../src/indexer/tiebreaker.js";
 
 test("rankEntriesWithTiebreaker: points desc then distance asc", () => {
   const ranked = rankEntriesWithTiebreaker({
@@ -15,6 +19,16 @@ test("rankEntriesWithTiebreaker: points desc then distance asc", () => {
   assert.equal(ranked[0]?.walletAddress, "0xaaa"); // higher points
   assert.equal(ranked[1]?.walletAddress, "0xccc"); // same points, smaller distance
   assert.equal(ranked[2]?.walletAddress, "0xbbb");
+});
+
+test("assignCompetitionRanks: 1224 placement", () => {
+  const ranks = assignCompetitionRanks([
+    { totalPoints: 11, distance: 1 },
+    { totalPoints: 10, distance: 2 },
+    { totalPoints: 10, distance: 2 },
+    { totalPoints: 10, distance: 9 },
+  ]);
+  assert.deepEqual(ranks, [1, 2, 2, 4]);
 });
 
 test("splitEqualPrize: dust remainder returned", () => {

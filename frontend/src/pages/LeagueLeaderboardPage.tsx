@@ -137,7 +137,17 @@ export function LeagueLeaderboardPage() {
                         )
                       }
                     >
-                      <td className="px-5 py-3 font-medium text-foreground">{r.rank}</td>
+                      <td className="px-5 py-3 font-medium text-foreground">
+                        <span>{r.rank}</span>
+                        {r.tied ? (
+                          <span
+                            className="ml-2 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground"
+                            title="Tied placement — identical score and tiebreaker distance when GROUP_STAGE_ACTUAL_TOTAL_GOALS is set."
+                          >
+                            Tied
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
                           <IdentityDisplay address={r.walletAddress as `0x${string}`} />
