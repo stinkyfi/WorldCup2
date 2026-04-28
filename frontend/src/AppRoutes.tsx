@@ -6,7 +6,9 @@ import { AdminPlaceholderPage } from "@/pages/AdminPlaceholderPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { BrowsePage } from "@/pages/BrowsePage";
 import { CreateLeagueWizardPage } from "@/pages/CreateLeagueWizardPage";
+import { LeagueCreatorDashboardPage } from "@/pages/LeagueCreatorDashboardPage";
 import { LeagueDetailPage } from "@/pages/LeagueDetailPage";
+import { LeagueEntryPage } from "@/pages/LeagueEntryPage";
 import { MyLeaguesPlaceholderPage } from "@/pages/MyLeaguesPlaceholderPage";
 
 export function AppRoutes() {
@@ -16,6 +18,22 @@ export function AppRoutes() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/browse" element={<BrowsePage />} />
         <Route path="/league/:address" element={<LeagueDetailPage />} />
+        <Route
+          path="/league/:address/enter"
+          element={
+            <RequireSiwe>
+              <LeagueEntryPage />
+            </RequireSiwe>
+          }
+        />
+        <Route
+          path="/league/:address/creator"
+          element={
+            <RequireSiwe>
+              <LeagueCreatorDashboardPage />
+            </RequireSiwe>
+          }
+        />
         <Route
           path="/create"
           element={

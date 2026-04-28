@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-26
-last_updated: 2026-04-27
+last_updated: 2026-04-28
 project: WorldCup2
 project_key: NOKEY
 tracking_system: file-system
@@ -79,14 +79,14 @@ development_status:
   3-1-league-creation-wizard-chain-token-and-fee-limits: done
   3-2-league-creation-wizard-revision-policy-promotion-review-and-on-chain-tx: done
   3-3-minimum-player-threshold-and-refund: done
-  3-4-creator-dashboard: backlog
+  3-4-creator-dashboard: done
   epic-3-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────
   # Epic 4: Player Entry & Predictions
   # ─────────────────────────────────────────────────────────────
-  epic-4: backlog
-  4-1-league-entry-compliance-modal-and-fee-review: backlog
+  epic-4: in-progress
+  4-1-league-entry-compliance-modal-and-fee-review: done
   4-2-league-entry-on-chain-entry-transaction: backlog
   4-3-prediction-form-desktop-drag-and-drop: backlog
   4-4-prediction-form-mobile-paginated-input: backlog

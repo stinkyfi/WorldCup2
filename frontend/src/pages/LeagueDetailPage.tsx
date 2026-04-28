@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type Address, formatUnits, getAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -26,6 +26,7 @@ function isAddress(s: string): boolean {
 
 export function LeagueDetailPage() {
   const { address = "" } = useParams();
+  const navigate = useNavigate();
   const [search] = useSearchParams();
   const created = search.get("created") === "1";
   const isValidAddress = useMemo(() => isAddress(address), [address]);
@@ -327,8 +328,7 @@ export function LeagueDetailPage() {
                       openConnectModal?.();
                       return;
                     }
-                    // Entry flow ships later; keep CTA visible per UX-DR5.
-                    window.alert("Entry flow ships in a later epic. Your wallet is connected.");
+                    void navigate(`/league/${address}/enter`);
                   }}
                 >
                   Enter League

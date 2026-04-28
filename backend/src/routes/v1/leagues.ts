@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { League } from "@prisma/client";
 import { z } from "zod";
-import { sendSuccess } from "../../lib/envelope.js";
+import { sendError, sendSuccess } from "../../lib/envelope.js";
 import { prisma } from "../../db.js";
 import {
   buildLeagueBrowseWhere,
@@ -11,6 +11,7 @@ import {
   type BrowseSortKey,
 } from "../../lib/leagueBrowse.js";
 import { computeFeeBreakdown } from "../../lib/leagueFees.js";
+import { SESSION_COOKIE_NAME } from "./auth.js";
 
 const addressParamSchema = z
   .string()
@@ -72,6 +73,19 @@ function serializeLeagueRow(l: League) {
   return toBrowseLeaguePublic(l);
 }
 
+async function sessionFromRequest(request: { cookies: Record<string, string | undefined> }) {
+  const sid = request.cookies[SESSION_COOKIE_NAME];
+  if (!sid) return null;
+  const session = await prisma.authSession.findUnique({ where: { id: sid } });
+  if (!session || session.expiresAt < new Date()) {
+    if (session) {
+      await prisma.authSession.delete({ where: { id: sid } }).catch(() => undefined);
+    }
+    return null;
+  }
+  return session;
+}
+
 /**
  * POST /api/v1/leagues — all string fields validated with Zod; Prisma uses
  * parameterized queries only (no string-concat SQL), satisfying NFR7/NFR8.
@@ -105,6 +119,88 @@ export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
         entryTokenDecimals: row.entryTokenDecimals,
         isFeatured: isSpotlightLeague(row),
         feeBreakdown,
+      },
+    });
+  });
+
+  /** Story 4.1 — compliance ack is stored once per wallet per league. */
+  fastify.get("/leagues/by-address/:address/compliance", async (request, reply) => {
+    const session = await sessionFromRequest(request);
+    if (!session) {
+      return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    }
+    const parsed = addressParamSchema.safeParse((request.params as { address?: unknown })?.address);
+    if (!parsed.success) {
+      throw parsed.error;
+    }
+    const address = parsed.data;
+    const row = await prisma.league.findFirst({
+      where: { contractAddress: { equals: address, mode: "insensitive" } },
+    });
+    if (!row) {
+      return reply.status(404).send({ error: "League not found", code: "NOT_FOUND" });
+    }
+    const ack = await prisma.complianceAcknowledgement.findUnique({
+      where: { leagueId_walletAddress: { leagueId: row.id, walletAddress: session.address } },
+    });
+    return sendSuccess(reply, { acknowledged: Boolean(ack), acknowledgedAt: ack?.acknowledgedAt.toISOString() ?? null });
+  });
+
+  fastify.post("/leagues/by-address/:address/compliance", async (request, reply) => {
+    const session = await sessionFromRequest(request);
+    if (!session) {
+      return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    }
+    const parsed = addressParamSchema.safeParse((request.params as { address?: unknown })?.address);
+    if (!parsed.success) {
+      throw parsed.error;
+    }
+    const address = parsed.data;
+    const row = await prisma.league.findFirst({
+      where: { contractAddress: { equals: address, mode: "insensitive" } },
+    });
+    if (!row) {
+      return reply.status(404).send({ error: "League not found", code: "NOT_FOUND" });
+    }
+
+    const ack = await prisma.complianceAcknowledgement.upsert({
+      where: { leagueId_walletAddress: { leagueId: row.id, walletAddress: session.address } },
+      create: { leagueId: row.id, walletAddress: session.address },
+      update: {},
+    });
+
+    return sendSuccess(reply, { acknowledged: true, acknowledgedAt: ack.acknowledgedAt.toISOString() });
+  });
+
+  /** Story 3.4 — creator-only view backing the creator dashboard page. */
+  fastify.get("/leagues/by-address/:address/creator", async (request, reply) => {
+    const session = await sessionFromRequest(request);
+    if (!session) {
+      return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    }
+    const parsed = addressParamSchema.safeParse((request.params as { address?: unknown })?.address);
+    if (!parsed.success) {
+      throw parsed.error;
+    }
+    const address = parsed.data;
+    const row = await prisma.league.findFirst({
+      where: { contractAddress: { equals: address, mode: "insensitive" } },
+    });
+    if (!row) {
+      return reply.status(404).send({ error: "League not found", code: "NOT_FOUND" });
+    }
+    if (!row.creatorAddress || row.creatorAddress.toLowerCase() !== session.address.toLowerCase()) {
+      return sendError(reply, 403, "FORBIDDEN", "You do not have access to this league's creator dashboard.");
+    }
+
+    return sendSuccess(reply, {
+      league: {
+        ...toBrowseLeaguePublic(row),
+        creatorAddress: row.creatorAddress,
+        creatorDescription: row.creatorDescription,
+        revisionPolicy: row.revisionPolicy,
+        entryTokenDecimals: row.entryTokenDecimals,
+        isFeatured: isSpotlightLeague(row),
       },
     });
   });

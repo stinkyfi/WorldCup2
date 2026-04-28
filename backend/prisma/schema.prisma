@@ -86,3 +86,16 @@ model WhitelistedToken {
   @@index([chainId], map: "idx_whitelisted_tokens_chain_id")
   @@map("whitelisted_tokens")
 }
+
+/// One-time compliance acknowledgment per wallet per league entry flow (Story 4.1).
+model ComplianceAcknowledgement {
+  id             String   @id @default(cuid())
+  leagueId       String   @map("league_id")
+  walletAddress  String   @map("wallet_address")
+  acknowledgedAt DateTime @default(now()) @map("acknowledged_at")
+
+  @@unique([leagueId, walletAddress], map: "uniq_compliance_league_wallet")
+  @@index([walletAddress], map: "idx_compliance_wallet_address")
+  @@index([leagueId], map: "idx_compliance_league_id")
+  @@map("compliance_acknowledgements")
+}
