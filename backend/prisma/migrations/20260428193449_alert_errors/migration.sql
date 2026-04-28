@@ -1,6 +1,4 @@
 -- AlterTable
-ALTER TABLE "leagues" ALTER COLUMN "lock_at" DROP DEFAULT;
-
 -- CreateTable
 CREATE TABLE "alert_errors" (
     "id" TEXT NOT NULL,

@@ -15,7 +15,8 @@
     "db:studio": "prisma studio",
     "oracle:primary": "tsx src/cron/primaryOracle.ts",
     "oracle:redundant": "tsx src/cron/redundantOracle.ts",
-    "alerts:telegram": "tsx src/cron/telegramAlerts.ts"
+    "alerts:telegram": "tsx src/cron/telegramAlerts.ts",
+    "indexer:results": "tsx src/indexer/resultsPostedListener.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

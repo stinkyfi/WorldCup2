@@ -29,12 +29,61 @@ model League {
   lockAt            DateTime  @map("lock_at")
   featured          Boolean   @default(false)
   promotedUntil     DateTime? @map("promoted_until")
+  lastCalculatedAt  DateTime? @map("last_calculated_at")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@index([chainId], map: "idx_leagues_chain_id")
   @@index([featured], map: "idx_leagues_featured")
   @@map("leagues")
+}
+
+/// Off-chain entry payload preimage (stored so indexer can score on ResultsPosted).
+model Entry {
+  id           String   @id @default(cuid())
+  chainId      Int      @map("chain_id")
+  leagueAddress String  @map("league_address")
+  walletAddress String  @map("wallet_address")
+  entryIndex   Int      @map("entry_index")
+  entryId      String   @map("entry_id")
+  commitment   String   @map("commitment")
+  groups       Json     @map("groups_json")
+  tiebreakerTotalGoals Int @map("tiebreaker_total_goals")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([chainId, leagueAddress, walletAddress, entryIndex], map: "uniq_entries_chain_league_wallet_index")
+  @@index([chainId, leagueAddress], map: "idx_entries_chain_league")
+  @@index([walletAddress], map: "idx_entries_wallet")
+  @@map("entries")
+}
+
+/// Per-group score for an entry (1pt per correct position + 1pt perfect bonus).
+model Score {
+  id           String   @id @default(cuid())
+  chainId      Int      @map("chain_id")
+  leagueAddress String  @map("league_address")
+  walletAddress String  @map("wallet_address")
+  entryIndex   Int      @map("entry_index")
+  groupId      Int      @map("group_id")
+  points       Int      @map("points")
+  perfectBonus Boolean  @default(false) @map("perfect_bonus")
+  calculatedAt DateTime @default(now()) @map("calculated_at")
+
+  @@unique([chainId, leagueAddress, walletAddress, entryIndex, groupId], map: "uniq_scores_entry_group")
+  @@index([chainId, leagueAddress], map: "idx_scores_chain_league")
+  @@index([walletAddress], map: "idx_scores_wallet")
+  @@map("scores")
+}
+
+/// Per-chain cursor for event replay / crash recovery.
+model IndexerState {
+  id               String   @id @default(cuid())
+  chainId           Int      @unique @map("chain_id")
+  lastProcessedBlock BigInt  @default(0) @map("last_processed_block")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("indexer_state")
 }
 
 /// One-time SIWE nonces (Story 2.2).

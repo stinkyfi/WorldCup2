@@ -5,5 +5,6 @@ export const oracleControllerAbi = parseAbi([
   "function expectedDeadline(uint8 groupId) view returns (uint256)",
   "function postResults(uint8 groupId, address[4] rankings)",
   "function setResultsForTesting(uint8 groupId, address[4] rankings)",
+  "event ResultsPosted(uint8 indexed groupId, address[4] rankings)",
 ]);
 
