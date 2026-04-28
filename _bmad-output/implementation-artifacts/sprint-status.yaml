@@ -87,7 +87,7 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   epic-4: in-progress
   4-1-league-entry-compliance-modal-and-fee-review: done
-  4-2-league-entry-on-chain-entry-transaction: backlog
+  4-2-league-entry-on-chain-entry-transaction: done
   4-3-prediction-form-desktop-drag-and-drop: backlog
   4-4-prediction-form-mobile-paginated-input: backlog
   4-5-prediction-form-tiebreaker-progress-indicator-and-submission: backlog

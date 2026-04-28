@@ -8,6 +8,8 @@ export const leagueAbi = parseAbi([
   "function totalEntries() view returns (uint256)",
   "function entryFee() view returns (uint256)",
   "function token() view returns (address)",
+  "function enter(bytes32 commitmentHash)",
+  "event EntrySubmitted(address indexed player, bytes32 commitmentHash)",
   "function checkThreshold()",
   "function claimRefund()",
 ]);

@@ -1,12 +1,18 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { type Address, getAddress, keccak256, toHex } from "viem";
+import { waitForTransactionReceipt } from "wagmi/actions";
+import { useAccount, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { chainLabel } from "@/lib/leagueBrowse";
 import { formatTimeToLock, formatTokenWei } from "@/lib/leagueDisplay";
+import { erc20Abi } from "@/lib/erc20Abi";
+import { leagueAbi } from "@/lib/leagueAbi";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
 import { fetchComplianceStatus, HttpError, postComplianceAck } from "@/lib/leagueCompliance";
+import { wagmiConfig } from "@/wagmi";
 
 function isAddress(s: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(s);
@@ -16,9 +22,15 @@ export function LeagueEntryPage() {
   const { address = "" } = useParams();
   const isValidAddress = useMemo(() => isAddress(address), [address]);
   const validAddress = isValidAddress ? address : null;
+  const { isConnected, address: walletAddress } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const { writeContractAsync } = useWriteContract();
 
   const [ackChecked, setAckChecked] = useState(false);
   const [ackError, setAckError] = useState<string | null>(null);
+  const [entryError, setEntryError] = useState<string | null>(null);
+  const [entryBusy, setEntryBusy] = useState<null | "approving" | "entering">(null);
+  const [entrySuccess, setEntrySuccess] = useState<{ commitmentHash: `0x${string}` } | null>(null);
 
   const leagueQuery = useQuery({
     queryKey: ["league-detail", validAddress],
@@ -51,6 +63,34 @@ export function LeagueEntryPage() {
     },
   });
 
+  const league = leagueQuery.data?.data.league;
+  const compliance = complianceQuery.data?.data;
+  const acknowledged = compliance?.acknowledged === true;
+
+  const leagueChainId = league?.chainId as 1 | 146 | 8453 | 84532 | undefined;
+  const leagueAddr = isValidAddress ? (getAddress(address) as Address) : undefined;
+  const tokenAddr = league?.entryTokenAddress ? (getAddress(league.entryTokenAddress) as Address) : undefined;
+  let entryFeeWei: bigint | undefined;
+  try {
+    entryFeeWei = league?.entryFeeWei ? BigInt(league.entryFeeWei) : undefined;
+  } catch {
+    entryFeeWei = undefined;
+  }
+
+  const { data: allowance } = useReadContract({
+    address: tokenAddr,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: walletAddress && leagueAddr ? [walletAddress, leagueAddr] : undefined,
+    chainId: leagueChainId,
+    query: {
+      enabled: Boolean(isConnected && walletAddress && tokenAddr && leagueAddr && leagueChainId),
+      refetchInterval: 15_000,
+    },
+  });
+
+  const allowanceEnough = typeof allowance !== "undefined" && typeof entryFeeWei !== "undefined" ? allowance >= entryFeeWei : false;
+
   if (!isValidAddress) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
@@ -62,10 +102,6 @@ export function LeagueEntryPage() {
       </div>
     );
   }
-
-  const league = leagueQuery.data?.data.league;
-  const compliance = complianceQuery.data?.data;
-  const acknowledged = compliance?.acknowledged === true;
 
   if (leagueQuery.isLoading || complianceQuery.isLoading) {
     return (
@@ -117,6 +153,71 @@ export function LeagueEntryPage() {
         </Button>
       </div>
     );
+  }
+
+  async function ensureChain() {
+    if (!leagueChainId) return;
+    await switchChainAsync({ chainId: leagueChainId });
+  }
+
+  async function onEnter() {
+    setEntryError(null);
+    if (!isConnected || !walletAddress) {
+      setEntryError("Connect a wallet to continue.");
+      return;
+    }
+    if (!acknowledged) {
+      setEntryError("Acknowledge compliance to continue.");
+      return;
+    }
+    if (!leagueChainId || !leagueAddr || !tokenAddr) {
+      setEntryError("League is missing chain or contract details.");
+      return;
+    }
+    if (typeof entryFeeWei === "undefined") {
+      setEntryError("Could not determine entry fee.");
+      return;
+    }
+
+    try {
+      await ensureChain();
+
+      if (!allowanceEnough) {
+        setEntryBusy("approving");
+        const approveHash = await writeContractAsync({
+          address: tokenAddr,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [leagueAddr, entryFeeWei],
+          chainId: leagueChainId,
+        });
+        await waitForTransactionReceipt(wagmiConfig, { hash: approveHash, chainId: leagueChainId });
+      }
+
+      setEntryBusy("entering");
+      const commitmentHash = keccak256(
+        toHex(`wc2:entry:${leagueAddr}:${walletAddress}:${Date.now()}`, { size: 32 }),
+      ) as `0x${string}`;
+
+      const enterHash = await writeContractAsync({
+        address: leagueAddr,
+        abi: leagueAbi,
+        functionName: "enter",
+        args: [commitmentHash],
+        chainId: leagueChainId,
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash: enterHash, chainId: leagueChainId });
+      setEntrySuccess({ commitmentHash });
+    } catch (e) {
+      const m = (e as Error | null | undefined)?.message ?? "";
+      if (m.includes("LeagueLocked")) setEntryError("League is locked. Entries are closed.");
+      else if (m.includes("MaxEntriesReached")) setEntryError("This league is full.");
+      else if (m.includes("MaxEntriesPerWalletReached")) setEntryError("You reached the max entries per wallet.");
+      else if (m.toLowerCase().includes("user rejected") || m.toLowerCase().includes("rejected")) setEntryError("Transaction rejected in wallet.");
+      else setEntryError("Entry failed. Please try again.");
+    } finally {
+      setEntryBusy(null);
+    }
   }
 
   return (
@@ -187,7 +288,7 @@ export function LeagueEntryPage() {
       <Card className={!acknowledged ? "opacity-50 pointer-events-none select-none" : undefined}>
         <CardHeader>
           <CardTitle>Fee review</CardTitle>
-          <CardDescription>Review fees before entering. Entry transaction ships in the next story.</CardDescription>
+          <CardDescription>Review fees and submit your entry transaction.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <dl className="grid gap-3">
@@ -215,9 +316,33 @@ export function LeagueEntryPage() {
             </div>
           </dl>
 
+          {entrySuccess ? (
+            <div className="rounded-md border border-primary/40 bg-primary/5 p-4 text-sm">
+              <p className="font-medium text-foreground">Entry submitted</p>
+              <p className="mt-1 text-muted-foreground">
+                Commitment hash: <code className="rounded bg-muted px-1">{entrySuccess.commitmentHash}</code>
+              </p>
+            </div>
+          ) : null}
+
+          {entryError ? <p className="text-sm text-destructive">{entryError}</p> : null}
+
           <div className="flex flex-wrap gap-2">
-            <Button type="button" className="min-h-11" disabled>
-              Continue to entry
+            <Button
+              type="button"
+              className="min-h-11"
+              disabled={!acknowledged || entryBusy !== null || Boolean(entrySuccess)}
+              onClick={() => void onEnter()}
+            >
+              {entryBusy === "approving"
+                ? "Approving…"
+                : entryBusy === "entering"
+                  ? "Entering…"
+                  : entrySuccess
+                    ? "Entered"
+                    : allowanceEnough
+                      ? "Enter league"
+                      : "Approve & enter"}
             </Button>
             <Button type="button" variant="secondary" className="min-h-11" asChild>
               <Link to={`/league/${address}`}>Back</Link>
