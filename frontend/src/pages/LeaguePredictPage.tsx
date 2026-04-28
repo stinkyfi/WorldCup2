@@ -9,9 +9,15 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { getAddress } from "viem";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PredictionProgressBar } from "@/components/PredictionProgressBar";
+import {
+  computePredictionCommitment,
+  savePredictionToStorage,
+  type PredictionPayloadV1,
+} from "@/lib/predictionCommitment";
 import { WORLD_CUP_GROUPS, type WorldCupGroupId } from "@/lib/worldCupGroups";
 import { cn } from "@/lib/utils";
 
@@ -26,10 +32,6 @@ function initState(): GroupOrderState {
     acc[g.id] = g.teams.map((t) => t.id);
     return acc;
   }, {} as GroupOrderState);
-}
-
-function groupComplete(order: string[] | undefined) {
-  return Boolean(order && order.length === 4 && new Set(order).size === 4);
 }
 
 function SortableTeamRow({
@@ -65,17 +67,17 @@ export function LeaguePredictPage() {
   const [orderByGroup, setOrderByGroup] = useState<GroupOrderState>(() => initState());
   const [tiebreaker, setTiebreaker] = useState<string>("");
   const [mobileStep, setMobileStep] = useState<number>(0);
+  const [confirmedGroups, setConfirmedGroups] = useState<Set<WorldCupGroupId>>(() => new Set());
+  const [submitCommitment, setSubmitCommitment] = useState<`0x${string}` | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const completedGroups = useMemo(
-    () => WORLD_CUP_GROUPS.reduce((n, g) => n + (groupComplete(orderByGroup[g.id]) ? 1 : 0), 0),
-    [orderByGroup],
-  );
+  const completedGroups = confirmedGroups.size;
   const tiebreakerFilled = /^\d+$/.test(tiebreaker.trim()) && Number(tiebreaker.trim()) >= 1 && Number(tiebreaker.trim()) <= 1000;
+  const canSubmit = completedGroups === 12 && tiebreakerFilled;
 
   const mobileGroup = WORLD_CUP_GROUPS[Math.min(WORLD_CUP_GROUPS.length - 1, Math.max(0, mobileStep))]!;
   const mobileOrder = orderByGroup[mobileGroup.id];
@@ -96,6 +98,7 @@ export function LeaguePredictPage() {
       }
       return { ...prev, [mobileGroup.id]: next };
     });
+    setConfirmedGroups((prev) => new Set(prev).add(mobileGroup.id));
   }
 
   if (!isValidAddress) {
@@ -108,6 +111,25 @@ export function LeaguePredictPage() {
         </Button>
       </div>
     );
+  }
+
+  function onSubmit() {
+    if (!canSubmit) return;
+    const leagueAddress = getAddress(address) as `0x${string}`;
+    const goals = Number(tiebreaker.trim());
+    const groups = WORLD_CUP_GROUPS.reduce((acc, g) => {
+      const order = orderByGroup[g.id];
+      acc[g.id] = [order[0]!, order[1]!, order[2]!, order[3]!] as [string, string, string, string];
+      return acc;
+    }, {} as PredictionPayloadV1["groups"]);
+    const payload: PredictionPayloadV1 = {
+      version: 1,
+      leagueAddress,
+      groups,
+      tiebreakerTotalGoals: goals,
+    };
+    savePredictionToStorage(payload);
+    setSubmitCommitment(computePredictionCommitment(payload));
   }
 
   return (
@@ -203,6 +225,7 @@ export function LeaguePredictPage() {
             const newIndex = ids.indexOf(overId);
             if (oldIndex === -1 || newIndex === -1) return;
             setOrderByGroup((prev) => ({ ...prev, [group.id]: arrayMove(prev[group.id], oldIndex, newIndex) }));
+            setConfirmedGroups((prev) => new Set(prev).add(group.id));
           }}
         >
           <div className="hidden gap-4 lg:grid lg:grid-cols-2">
@@ -252,11 +275,25 @@ export function LeaguePredictPage() {
                 placeholder="e.g. 142"
               />
             </div>
-            <Button type="button" className="min-h-11" disabled>
-              Submit (ships in Story 4.5)
+            <Button type="button" className="min-h-11" disabled={!canSubmit} onClick={() => onSubmit()}>
+              {canSubmit ? "Submit predictions" : "Complete all groups + tiebreaker"}
             </Button>
           </CardContent>
         </Card>
+
+        {submitCommitment ? (
+          <div className="mt-6 rounded-lg border border-primary/40 bg-primary/5 p-4 text-sm">
+            <p className="font-medium text-foreground">Predictions ready</p>
+            <p className="mt-1 text-muted-foreground">
+              Commitment hash: <code className="rounded bg-muted px-1">{submitCommitment}</code>
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" className="min-h-11" asChild>
+                <Link to={`/league/${address}/enter`}>Continue to entry</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

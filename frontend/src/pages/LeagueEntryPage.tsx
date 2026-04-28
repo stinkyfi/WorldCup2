@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { type Address, getAddress, keccak256, toHex } from "viem";
+import { type Address, getAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { erc20Abi } from "@/lib/erc20Abi";
 import { leagueAbi } from "@/lib/leagueAbi";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
 import { fetchComplianceStatus, HttpError, postComplianceAck } from "@/lib/leagueCompliance";
+import { computePredictionCommitment, loadPredictionFromStorage } from "@/lib/predictionCommitment";
 import { wagmiConfig } from "@/wagmi";
 
 function isAddress(s: string): boolean {
@@ -90,6 +91,8 @@ export function LeagueEntryPage() {
   });
 
   const allowanceEnough = typeof allowance !== "undefined" && typeof entryFeeWei !== "undefined" ? allowance >= entryFeeWei : false;
+  const predictionPayload = useMemo(() => (isValidAddress ? loadPredictionFromStorage(address) : null), [address, isValidAddress]);
+  const predictionReady = Boolean(predictionPayload);
 
   if (!isValidAddress) {
     return (
@@ -170,6 +173,10 @@ export function LeagueEntryPage() {
       setEntryError("Acknowledge compliance to continue.");
       return;
     }
+    if (!predictionPayload) {
+      setEntryError("Make predictions before entering.");
+      return;
+    }
     if (!leagueChainId || !leagueAddr || !tokenAddr) {
       setEntryError("League is missing chain or contract details.");
       return;
@@ -195,9 +202,7 @@ export function LeagueEntryPage() {
       }
 
       setEntryBusy("entering");
-      const commitmentHash = keccak256(
-        toHex(`wc2:entry:${leagueAddr}:${walletAddress}:${Date.now()}`, { size: 32 }),
-      ) as `0x${string}`;
+      const commitmentHash = computePredictionCommitment(predictionPayload);
 
       const enterHash = await writeContractAsync({
         address: leagueAddr,
@@ -291,6 +296,16 @@ export function LeagueEntryPage() {
           <CardDescription>Review fees and submit your entry transaction.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
+          {!predictionReady ? (
+            <div className="rounded-md border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+              Predictions not found for this league. Create predictions first, then come back here to enter.
+              <div className="mt-3">
+                <Button type="button" variant="secondary" className="min-h-11" asChild>
+                  <Link to={`/league/${address}/predict`}>Make predictions</Link>
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <dl className="grid gap-3">
             <div className="flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3">
               <dt className="text-sm text-muted-foreground">Entry fee</dt>
@@ -336,7 +351,7 @@ export function LeagueEntryPage() {
             <Button
               type="button"
               className="min-h-11"
-              disabled={!acknowledged || entryBusy !== null || Boolean(entrySuccess)}
+              disabled={!acknowledged || !predictionReady || entryBusy !== null || Boolean(entrySuccess)}
               onClick={() => void onEnter()}
             >
               {entryBusy === "approving"
