@@ -117,7 +117,7 @@ development_status:
   6-3-score-breakdown-per-player: backlog
   6-4-tiebreaker-split-logic: backlog
   6-5-creator-view-all-predictions-after-lock: backlog
-  6-6-full-prediction-history-post-resolution: backlog
+  6-6-full-prediction-history-post-resolution: done
   epic-6-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────

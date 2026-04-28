@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { LeaderboardBreakdownGrid } from "@/components/LeaderboardBreakdownGrid";
 import { IdentityDisplay } from "@/components/IdentityDisplay";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
 import { fetchLeaderboard, fetchLeaderboardBreakdown } from "@/lib/leaderboard";
@@ -154,46 +155,10 @@ export function LeagueLeaderboardPage() {
                           ) : breakdownQuery.isError ? (
                             <div className="text-sm text-destructive">Could not load breakdown.</div>
                           ) : (
-                            <div className="grid gap-2">
-                              <div className="text-xs text-muted-foreground">
-                                Tiebreaker total goals:{" "}
-                                <span className="font-medium text-foreground">
-                                  {breakdownQuery.data?.data.entry.tiebreakerTotalGoals ?? "—"}
-                                </span>
-                              </div>
-                              <div className="grid gap-2 sm:grid-cols-2">
-                                {(breakdownQuery.data?.data.groups ?? []).map((g) => (
-                                  <div key={g.groupId} className="rounded-md border border-border bg-background/40 p-3">
-                                    <div className="flex items-center justify-between">
-                                      <div className="text-sm font-medium text-foreground">{g.groupLabel}</div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {g.status === "pending" ? "Pending" : g.status === "posted" ? "Posted" : "—"}
-                                      </div>
-                                    </div>
-                                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                                      <div>
-                                        Predicted:{" "}
-                                        <span className="text-foreground">
-                                          {g.predicted ? g.predicted.join(", ") : "—"}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        Actual:{" "}
-                                        <span className="text-foreground">
-                                          {g.actual ? g.actual.map((x) => x ?? "?").join(", ") : g.status === "pending" ? "Pending" : "—"}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        Points:{" "}
-                                        <span className="text-foreground">
-                                          {typeof g.points === "number" ? `${g.points}${g.perfectBonus ? " (perfect)" : ""}` : "—"}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                            <LeaderboardBreakdownGrid
+                              tiebreakerTotalGoals={breakdownQuery.data?.data.entry.tiebreakerTotalGoals}
+                              groups={breakdownQuery.data?.data.groups ?? []}
+                            />
                           )}
                         </td>
                       </tr>

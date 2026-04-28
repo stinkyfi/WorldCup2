@@ -2,6 +2,8 @@ import { parseAbi } from "viem";
 
 /** Minimal League ABI for Story 3.3 (threshold + refunds). */
 export const leagueAbi = parseAbi([
+  "function merkleRoot() view returns (bytes32)",
+  "function merkleRootSetAt() view returns (uint256)",
   "function state() view returns (uint8)",
   "function lockTime() view returns (uint256)",
   "function revisionPolicy() view returns (uint8)",

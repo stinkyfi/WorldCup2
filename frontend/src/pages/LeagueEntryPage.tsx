@@ -1,19 +1,22 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { type Address, getAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
+import { LeaderboardBreakdownGrid } from "@/components/LeaderboardBreakdownGrid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { chainLabel } from "@/lib/leagueBrowse";
 import { formatTimeToLock, formatTokenWei } from "@/lib/leagueDisplay";
 import { erc20Abi } from "@/lib/erc20Abi";
 import { leagueAbi } from "@/lib/leagueAbi";
+import { fetchLeaderboard, fetchLeaderboardBreakdown } from "@/lib/leaderboard";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
 import { fetchComplianceStatus, HttpError, postComplianceAck } from "@/lib/leagueCompliance";
 import {
   computePredictionCommitment,
+  getEntryIndexFromStorage,
   loadPredictionFromStorage,
   migrateLegacyV1IfPresent,
   setEntryIndexInStorage,
@@ -22,6 +25,214 @@ import { wagmiConfig } from "@/wagmi";
 
 function isAddress(s: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(s);
+}
+
+const ZERO_MERKLE_ROOT =
+  "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
+
+/** Until Epic 8 exposes Merkle eligibility, show Claim CTA for ranks in this band (inclusive). */
+const PLACEHOLDER_PRIZE_RANK_CAP = 10;
+
+function ResolvedEntrySection(props: {
+  leagueAddressRaw: string;
+  leagueChainId: number;
+  leagueTitle: string;
+  entryId: string | null;
+}) {
+  const { leagueAddressRaw, leagueChainId, leagueTitle, entryId } = props;
+  const { address: walletAddress } = useAccount();
+
+  const lbQuery = useQuery({
+    queryKey: ["leaderboard", leagueChainId, leagueAddressRaw],
+    queryFn: ({ signal }) =>
+      fetchLeaderboard({ chainId: leagueChainId, leagueAddress: leagueAddressRaw, signal }),
+    enabled: Boolean(walletAddress && leagueChainId && leagueAddressRaw),
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
+
+  const rowsMine = useMemo(() => {
+    const rows = lbQuery.data?.data.rows ?? [];
+    const w = walletAddress?.toLowerCase();
+    if (!w) return [];
+    return rows.filter((r) => r.walletAddress.toLowerCase() === w);
+  }, [lbQuery.data?.data.rows, walletAddress]);
+
+  const defaultEntryIndex = useMemo(() => {
+    if (!walletAddress || rowsMine.length === 0) return null;
+    const sid = entryId
+      ? getEntryIndexFromStorage({ leagueAddress: leagueAddressRaw, walletAddress, entryId })
+      : null;
+    if (sid !== null && rowsMine.some((r) => r.entryIndex === sid)) return sid;
+    return rowsMine.reduce((min, r) => Math.min(min, r.entryIndex), rowsMine[0].entryIndex);
+  }, [rowsMine, entryId, leagueAddressRaw, walletAddress]);
+
+  const [manualEntryIndex, setManualEntryIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setManualEntryIndex(null);
+  }, [entryId, leagueAddressRaw, walletAddress]);
+
+  const effectiveEntryIndex = manualEntryIndex ?? defaultEntryIndex;
+
+  const breakdownQuery = useQuery({
+    queryKey: ["leaderboard-breakdown", leagueChainId, leagueAddressRaw, walletAddress, effectiveEntryIndex],
+    queryFn: ({ signal }) =>
+      fetchLeaderboardBreakdown({
+        chainId: leagueChainId,
+        leagueAddress: leagueAddressRaw,
+        walletAddress: walletAddress!,
+        entryIndex: effectiveEntryIndex!,
+        signal,
+      }),
+    enabled: Boolean(walletAddress && effectiveEntryIndex !== null && leagueChainId),
+    staleTime: 10_000,
+    retry: 0,
+  });
+
+  const rowForEntry = rowsMine.find((r) => r.entryIndex === effectiveEntryIndex);
+
+  const [shareHint, setShareHint] = useState<string | null>(null);
+
+  async function onShareResult() {
+    const rank = rowForEntry?.rank;
+    const score = rowForEntry?.totalPoints;
+    const url = `${window.location.origin}/league/${leagueAddressRaw}/enter${
+      entryId ? `?entryId=${encodeURIComponent(entryId)}` : ""
+    }`;
+    const lines = [
+      `WorldCup2 — ${leagueTitle}`,
+      typeof rank === "number" && typeof score === "number" ? `#${rank} · ${score} pts` : "",
+      url,
+    ].filter(Boolean);
+    const text = lines.join("\n");
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: leagueTitle, text, url });
+        setShareHint("Shared.");
+        window.setTimeout(() => setShareHint(null), 2500);
+        return;
+      }
+    } catch {
+      /* user cancelled native share */
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareHint("Copied to clipboard.");
+      window.setTimeout(() => setShareHint(null), 2500);
+    } catch {
+      setShareHint("Could not share or copy.");
+    }
+  }
+
+  const showClaimCta =
+    typeof rowForEntry?.rank === "number" &&
+    rowForEntry.rank >= 1 &&
+    rowForEntry.rank <= PLACEHOLDER_PRIZE_RANK_CAP;
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-foreground">Your results</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{leagueTitle}</span> — Merkle root is posted; payouts follow Epic
+            8.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" className="min-h-11" asChild>
+            <Link to={`/league/${leagueAddressRaw}`}>League home</Link>
+          </Button>
+          <Button type="button" variant="secondary" className="min-h-11" asChild>
+            <Link to={`/league/${leagueAddressRaw}/leaderboard`}>Leaderboard</Link>
+          </Button>
+        </div>
+      </div>
+
+      {!walletAddress ? (
+        <p className="text-sm text-muted-foreground">Connect the wallet you used to enter this league to load your scores.</p>
+      ) : lbQuery.isLoading ? (
+        <div className="text-sm text-muted-foreground" role="status">
+          Loading your score…
+        </div>
+      ) : lbQuery.isError ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Could not load leaderboard.{" "}
+          <button type="button" className="underline underline-offset-2" onClick={() => void lbQuery.refetch()}>
+            Retry
+          </button>
+        </div>
+      ) : rowsMine.length === 0 ? (
+        <div className="rounded-md border border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">
+          No entry found for your wallet in this league (or scores are still being indexed).
+        </div>
+      ) : (
+        <Card className="border-border bg-card/40">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>Final score breakdown</CardTitle>
+              <CardDescription>Predicted vs actual groups, points, and tiebreaker.</CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" className="min-h-11" onClick={() => void onShareResult()}>
+                Share result
+              </Button>
+              {showClaimCta ? (
+                <Button type="button" className="min-h-11" asChild>
+                  <Link to={`/league/${leagueAddressRaw}/claim`}>Claim prize</Link>
+                </Button>
+              ) : null}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 text-sm">
+            {shareHint ? <p className="text-xs text-muted-foreground">{shareHint}</p> : null}
+
+            <div className="flex flex-wrap items-center gap-4 rounded-md border border-border bg-background/40 px-4 py-3">
+              <div>
+                <div className="text-xs text-muted-foreground">Rank</div>
+                <div className="text-lg font-semibold text-foreground">{rowForEntry?.rank ?? "—"}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Score</div>
+                <div className="text-lg font-semibold text-foreground">{rowForEntry?.totalPoints ?? "—"}</div>
+              </div>
+              {rowsMine.length > 1 ? (
+                <label className="ml-auto flex flex-col gap-1 text-xs text-muted-foreground sm:min-w-[180px]">
+                  Entry slot
+                  <select
+                    className="rounded-md border border-border bg-background px-2 py-2 text-sm text-foreground"
+                    value={effectiveEntryIndex ?? ""}
+                    onChange={(e) => setManualEntryIndex(Number(e.target.value))}
+                  >
+                    {rowsMine.map((r) => (
+                      <option key={r.entryIndex} value={r.entryIndex}>
+                        Entry #{r.entryIndex}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+
+            {breakdownQuery.isLoading ? (
+              <div className="text-muted-foreground" role="status">
+                Loading breakdown…
+              </div>
+            ) : breakdownQuery.isError ? (
+              <div className="text-destructive">Could not load score breakdown.</div>
+            ) : (
+              <LeaderboardBreakdownGrid
+                tiebreakerTotalGoals={breakdownQuery.data?.data.entry.tiebreakerTotalGoals}
+                groups={breakdownQuery.data?.data.groups ?? []}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 }
 
 export function LeagueEntryPage() {
@@ -117,6 +328,16 @@ export function LeagueEntryPage() {
   }, [address, entryId, isValidAddress, walletAddress]);
   const predictionReady = Boolean(prediction?.payload);
 
+  const { data: merkleRoot, isPending: merklePending } = useReadContract({
+    address: leagueAddr,
+    abi: leagueAbi,
+    functionName: "merkleRoot",
+    chainId: leagueChainId,
+    query: {
+      enabled: Boolean(leagueAddr && leagueChainId && league),
+    },
+  });
+
   if (!isValidAddress) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
@@ -129,7 +350,7 @@ export function LeagueEntryPage() {
     );
   }
 
-  if (leagueQuery.isLoading || complianceQuery.isLoading) {
+  if (leagueQuery.isLoading || complianceQuery.isLoading || (league && merklePending)) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-muted-foreground" role="status">
         Loading entry…
@@ -178,6 +399,20 @@ export function LeagueEntryPage() {
           <Link to="/browse">Browse leagues</Link>
         </Button>
       </div>
+    );
+  }
+
+  const resolved =
+    merkleRoot !== undefined && merkleRoot !== ZERO_MERKLE_ROOT;
+
+  if (resolved) {
+    return (
+      <ResolvedEntrySection
+        leagueAddressRaw={address}
+        leagueChainId={league.chainId}
+        leagueTitle={league.title}
+        entryId={entryId}
+      />
     );
   }
 

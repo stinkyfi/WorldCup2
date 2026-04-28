@@ -11,6 +11,7 @@ import { CreateLeagueWizardPage } from "@/pages/CreateLeagueWizardPage";
 import { LeagueCreatorDashboardPage } from "@/pages/LeagueCreatorDashboardPage";
 import { LeagueDetailPage } from "@/pages/LeagueDetailPage";
 import { LeagueEntryPage } from "@/pages/LeagueEntryPage";
+import { LeagueClaimPlaceholderPage } from "@/pages/LeagueClaimPlaceholderPage";
 import { LeagueLeaderboardPage } from "@/pages/LeagueLeaderboardPage";
 import { LeaguePredictPage } from "@/pages/LeaguePredictPage";
 import { MyLeaguesPlaceholderPage } from "@/pages/MyLeaguesPlaceholderPage";
@@ -23,6 +24,14 @@ export function AppRoutes() {
         <Route path="/browse" element={<BrowsePage />} />
         <Route path="/league/:address" element={<LeagueDetailPage />} />
         <Route path="/league/:address/leaderboard" element={<LeagueLeaderboardPage />} />
+        <Route
+          path="/league/:address/claim"
+          element={
+            <RequireSiwe>
+              <LeagueClaimPlaceholderPage />
+            </RequireSiwe>
+          }
+        />
         <Route
           path="/league/:address/enter"
           element={
