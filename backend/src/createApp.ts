@@ -7,6 +7,7 @@ import { ZodError } from "zod";
 import { AppError } from "./appError.js";
 import { prisma } from "./db.js";
 import { sendError } from "./lib/envelope.js";
+import { leagueOgHtmlPlugin } from "./routes/leagueOgHtml.js";
 import { registerV1Routes } from "./routes/v1/index.js";
 
 export async function createApp() {
@@ -44,6 +45,7 @@ export async function createApp() {
     return sendError(reply, 500, "INTERNAL_ERROR", "Internal server error");
   });
 
+  await fastify.register(leagueOgHtmlPlugin);
   await fastify.register(registerV1Routes, { prefix: "/api/v1" });
 
   fastify.addHook("onClose", async () => {

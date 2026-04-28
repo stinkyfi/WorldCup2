@@ -39,6 +39,11 @@ export const config = {
     "CORS_ORIGIN",
     "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173",
   ),
+  /**
+   * Absolute origin of the public SPA (no trailing slash). Used for Open Graph `og:url` and
+   * default `og:image` URLs (Story 2.6).
+   */
+  publicAppOrigin: (process.env.PUBLIC_APP_ORIGIN ?? "http://localhost:5173").replace(/\/$/, ""),
   /** Set `Secure` on session cookie (required in production behind HTTPS). */
   cookieSecure: process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production",
 };

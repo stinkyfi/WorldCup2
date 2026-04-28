@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SiweMessage } from "siwe";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAccount, WagmiProvider } from "wagmi";
+import { GetWalletDisclaimer } from "@/components/GetWalletDisclaimer";
 import { SessionChainSync } from "@/components/SessionChainSync";
 import { apiUrl } from "@/lib/apiBase";
 import type { SessionUser } from "@/lib/siweAuthContext";
@@ -158,7 +159,13 @@ function SiweRainbowKitInner({ children }: { children: ReactNode }) {
     <SiweSessionContext.Provider value={sessionValue}>
       <SiweAuthUiContext.Provider value={siweAuthUi}>
         <RainbowKitAuthenticationProvider adapter={adapter} status={authStatus} enabled>
-          <RainbowKitProvider theme={broadcastTheme}>
+          <RainbowKitProvider
+            theme={broadcastTheme}
+            appInfo={{
+              appName: "WorldCup2",
+              disclaimer: GetWalletDisclaimer,
+            }}
+          >
             <WalletSessionSync authStatus={authStatus} onSessionCleared={onSessionCleared} />
             <SessionChainSync />
             {children}
