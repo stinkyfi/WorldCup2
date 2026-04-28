@@ -8,16 +8,18 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { getAddress } from "viem";
+import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PolymarketOddsWidget } from "@/components/PolymarketOddsWidget";
 import { PredictionProgressBar } from "@/components/PredictionProgressBar";
 import {
-  computePredictionCommitment,
+  createEntryId,
+  migrateLegacyV1IfPresent,
   savePredictionToStorage,
-  type PredictionPayloadV1,
+  type PredictionPayloadV2,
 } from "@/lib/predictionCommitment";
 import { WORLD_CUP_GROUPS, type WorldCupGroupId } from "@/lib/worldCupGroups";
 import { cn } from "@/lib/utils";
@@ -63,13 +65,17 @@ function SortableTeamRow({
 
 export function LeaguePredictPage() {
   const { address = "" } = useParams();
+  const [search] = useSearchParams();
+  const entryIdFromUrl = search.get("entryId");
   const isValidAddress = useMemo(() => isAddress(address), [address]);
+  const { address: walletAddress } = useAccount();
 
   const [orderByGroup, setOrderByGroup] = useState<GroupOrderState>(() => initState());
   const [tiebreaker, setTiebreaker] = useState<string>("");
   const [mobileStep, setMobileStep] = useState<number>(0);
   const [confirmedGroups, setConfirmedGroups] = useState<Set<WorldCupGroupId>>(() => new Set());
   const [submitCommitment, setSubmitCommitment] = useState<`0x${string}` | null>(null);
+  const [entryId] = useState<string>(() => entryIdFromUrl ?? createEntryId());
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -116,21 +122,25 @@ export function LeaguePredictPage() {
 
   function onSubmit() {
     if (!canSubmit) return;
+    if (!walletAddress) return;
     const leagueAddress = getAddress(address) as `0x${string}`;
     const goals = Number(tiebreaker.trim());
     const groups = WORLD_CUP_GROUPS.reduce((acc, g) => {
       const order = orderByGroup[g.id];
       acc[g.id] = [order[0]!, order[1]!, order[2]!, order[3]!] as [string, string, string, string];
       return acc;
-    }, {} as PredictionPayloadV1["groups"]);
-    const payload: PredictionPayloadV1 = {
-      version: 1,
+    }, {} as PredictionPayloadV2["groups"]);
+    const payload: PredictionPayloadV2 = {
+      version: 2,
       leagueAddress,
+      entryId,
+      walletAddress,
       groups,
       tiebreakerTotalGoals: goals,
     };
-    savePredictionToStorage(payload);
-    setSubmitCommitment(computePredictionCommitment(payload));
+    migrateLegacyV1IfPresent(leagueAddress, walletAddress);
+    const commitment = savePredictionToStorage(payload);
+    setSubmitCommitment(commitment);
   }
 
   return (
@@ -292,7 +302,7 @@ export function LeaguePredictPage() {
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" className="min-h-11" asChild>
-                <Link to={`/league/${address}/enter`}>Continue to entry</Link>
+                <Link to={`/league/${address}/enter?entryId=${encodeURIComponent(entryId)}`}>Continue to entry</Link>
               </Button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { type Address, getAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
@@ -12,7 +12,7 @@ import { erc20Abi } from "@/lib/erc20Abi";
 import { leagueAbi } from "@/lib/leagueAbi";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
 import { fetchComplianceStatus, HttpError, postComplianceAck } from "@/lib/leagueCompliance";
-import { computePredictionCommitment, loadPredictionFromStorage } from "@/lib/predictionCommitment";
+import { computePredictionCommitment, loadPredictionFromStorage, migrateLegacyV1IfPresent } from "@/lib/predictionCommitment";
 import { wagmiConfig } from "@/wagmi";
 
 function isAddress(s: string): boolean {
@@ -21,6 +21,8 @@ function isAddress(s: string): boolean {
 
 export function LeagueEntryPage() {
   const { address = "" } = useParams();
+  const [search] = useSearchParams();
+  const entryId = search.get("entryId");
   const isValidAddress = useMemo(() => isAddress(address), [address]);
   const validAddress = isValidAddress ? address : null;
   const { isConnected, address: walletAddress } = useAccount();
@@ -91,8 +93,12 @@ export function LeagueEntryPage() {
   });
 
   const allowanceEnough = typeof allowance !== "undefined" && typeof entryFeeWei !== "undefined" ? allowance >= entryFeeWei : false;
-  const predictionPayload = useMemo(() => (isValidAddress ? loadPredictionFromStorage(address) : null), [address, isValidAddress]);
-  const predictionReady = Boolean(predictionPayload);
+  const prediction = useMemo(() => {
+    if (!isValidAddress || !walletAddress) return null;
+    migrateLegacyV1IfPresent(address, walletAddress);
+    return loadPredictionFromStorage(address, walletAddress, entryId);
+  }, [address, entryId, isValidAddress, walletAddress]);
+  const predictionReady = Boolean(prediction?.payload);
 
   if (!isValidAddress) {
     return (
@@ -173,8 +179,8 @@ export function LeagueEntryPage() {
       setEntryError("Acknowledge compliance to continue.");
       return;
     }
-    if (!predictionPayload) {
-      setEntryError("Make predictions before entering.");
+    if (!prediction?.payload) {
+      setEntryError("Make predictions before entering (or pick an entry slot).");
       return;
     }
     if (!leagueChainId || !leagueAddr || !tokenAddr) {
@@ -202,7 +208,7 @@ export function LeagueEntryPage() {
       }
 
       setEntryBusy("entering");
-      const commitmentHash = computePredictionCommitment(predictionPayload);
+      const commitmentHash = computePredictionCommitment(prediction.payload);
 
       const enterHash = await writeContractAsync({
         address: leagueAddr,
@@ -340,6 +346,9 @@ export function LeagueEntryPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" className="min-h-11" asChild>
                   <Link to={`/league/${address}/predict`}>Make predictions</Link>
+                </Button>
+                <Button type="button" variant="secondary" className="min-h-11" asChild>
+                  <Link to={`/league/${address}/predict`}>Add another entry</Link>
                 </Button>
               </div>
             </div>
