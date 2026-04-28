@@ -128,3 +128,16 @@ model OracleError {
   @@index([chainId, createdAt], map: "idx_oracle_errors_chain_time")
   @@map("oracle_errors")
 }
+
+/// Story 5.4 — Telegram/webhook alert send failures (should never crash monitoring).
+model AlertError {
+  id        String   @id @default(cuid())
+  chainId   Int      @map("chain_id")
+  groupId   Int?     @map("group_id")
+  message   String
+  details   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([chainId, createdAt], map: "idx_alert_errors_chain_time")
+  @@map("alert_errors")
+}
