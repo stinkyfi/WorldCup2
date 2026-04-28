@@ -18,6 +18,7 @@ struct LeagueParams {
     uint256 maxEntries;          // Hard cap on total entries (0 = no cap)
     uint256 maxEntriesPerWallet; // Max entries any single wallet may hold (0 = no cap)
     uint256 minThreshold;        // Minimum entries required at lock; refund triggered if not met
+    uint256 revisionFee;         // Fee per prediction revision (in token smallest unit) when revisionPolicy == Paid
     RevisionPolicy revisionPolicy;
     uint256 lockTime;            // Unix timestamp: no new entries accepted on or after this time
 }
@@ -51,6 +52,7 @@ contract League is ReentrancyGuard {
     uint256 public immutable maxEntries;
     uint256 public immutable maxEntriesPerWallet;
     uint256 public immutable minThreshold;
+    uint256 public immutable revisionFee;
     RevisionPolicy public immutable revisionPolicy;
     uint256 public immutable lockTime;
 
@@ -124,6 +126,7 @@ contract League is ReentrancyGuard {
         maxEntries = params.maxEntries;
         maxEntriesPerWallet = params.maxEntriesPerWallet;
         minThreshold = params.minThreshold;
+        revisionFee = params.revisionFee;
         revisionPolicy = params.revisionPolicy;
         lockTime = params.lockTime;
     }

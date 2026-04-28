@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { IdentityDisplay } from "@/components/IdentityDisplay";
@@ -15,9 +15,12 @@ function isAddress(s: string): boolean {
 
 export function LeagueDetailPage() {
   const { address = "" } = useParams();
+  const [search] = useSearchParams();
+  const created = search.get("created") === "1";
   const validAddress = useMemo(() => (isAddress(address) ? address : null), [address]);
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const [copyMsg, setCopyMsg] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: ["league-detail", validAddress],
@@ -43,6 +46,33 @@ export function LeagueDetailPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      {created && validAddress && !query.isLoading && !query.isError ? (
+        <div className="mb-6 rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-foreground" role="status">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-medium">League created</p>
+              <p className="mt-0.5 text-muted-foreground">
+                Shareable link:{" "}
+                <code className="rounded bg-muted px-1">{`${window.location.origin}/league/${validAddress}`}</code>
+                {copyMsg ? <span className="ml-2 text-foreground">({copyMsg})</span> : null}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() =>
+                void navigator.clipboard
+                  .writeText(`${window.location.origin}/league/${validAddress}`)
+                  .then(() => setCopyMsg("Copied"))
+                  .catch(() => setCopyMsg("Copy failed"))
+              }
+            >
+              Copy
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {query.isLoading ? (
         <div className="rounded-lg border border-border bg-muted/30 px-6 py-12" role="status">
           Loading league…

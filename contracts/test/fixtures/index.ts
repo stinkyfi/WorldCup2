@@ -129,6 +129,7 @@ export async function deployLeague() {
     maxEntries: 100n,
     maxEntriesPerWallet: 5n,
     minThreshold: 2n,
+    revisionFee: 0n,
     revisionPolicy: 0,
     lockTime,
   } as const;

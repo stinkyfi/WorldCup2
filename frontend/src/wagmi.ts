@@ -5,7 +5,8 @@ import {
   rainbowWallet,
   walletConnectWallet,
 } from "@rainbow-me/rainbowkit/wallets";
-import { baseSepolia } from "wagmi/chains";
+import { defineChain } from "viem";
+import { base, baseSepolia, mainnet } from "viem/chains";
 
 function walletConnectProjectId(): string {
   const id = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
@@ -14,11 +15,27 @@ function walletConnectProjectId(): string {
   return "00000000000000000000000000000000";
 }
 
-/** RainbowKit + wagmi config — Base Sepolia (Base testnet) per Story 1.9; FR1 wallet list for Story 2.2 */
+/** Sonic mainnet — used with league creation wizard (Story 3.1 / 3.2). */
+export const sonicMainnet = defineChain({
+  id: 146,
+  name: "Sonic",
+  nativeCurrency: { decimals: 18, name: "Sonic", symbol: "S" },
+  rpcUrls: {
+    default: { http: ["https://rpc.soniclabs.com"] },
+  },
+  blockExplorers: {
+    default: { name: "SonicScan", url: "https://sonicscan.org" },
+  },
+});
+
+/**
+ * RainbowKit + wagmi — Base Sepolia for local SIWE (Story 2.2) plus Base / Ethereum / Sonic
+ * mainnets for Story 3.2 `createLeague` on the chains offered in the wizard.
+ */
 export const wagmiConfig = getDefaultConfig({
   appName: "WorldCup2",
   projectId: walletConnectProjectId(),
-  chains: [baseSepolia],
+  chains: [baseSepolia, base, mainnet, sonicMainnet],
   ssr: false,
   wallets: [
     {

@@ -119,7 +119,7 @@ describe("League", () => {
       oracle.account.address,
       devWalletClient.account.address,
       200n, 300n,
-      { token: token.address, entryFee, maxEntries: 1n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionPolicy: 0, lockTime },
+      { token: token.address, entryFee, maxEntries: 1n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime },
     ]);
 
     await token.write.approve([league.address, entryFee], { account: player1.account });
@@ -148,7 +148,7 @@ describe("League", () => {
       oracle.account.address,
       devWalletClient.account.address,
       200n, 300n,
-      { token: token.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 1n, minThreshold: 0n, revisionPolicy: 0, lockTime },
+      { token: token.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 1n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime },
     ]);
 
     await token.write.approve([league.address, entryFee * 2n], { account: player1.account });
@@ -174,7 +174,7 @@ describe("League", () => {
     const league = await connection.viem.deployContract("League", [
       creator.account.address, oracle.account.address, devWalletClient.account.address,
       200n, 300n,
-      { token: token.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 5n, minThreshold: 2n, revisionPolicy: 0, lockTime },
+      { token: token.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 5n, minThreshold: 2n, revisionFee: 0n, revisionPolicy: 0, lockTime },
     ]);
 
     await token.write.approve([league.address, entryFee], { account: player1.account });
@@ -240,7 +240,7 @@ describe("League", () => {
     const lg = await connection.viem.deployContract("League", [
       creator.account.address, oracle.account.address, devWalletClient.account.address,
       200n, 300n,
-      { token: tok.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 5n, minThreshold: 3n, revisionPolicy: 0, lockTime: lt },
+      { token: tok.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 5n, minThreshold: 3n, revisionFee: 0n, revisionPolicy: 0, lockTime: lt },
     ]);
     await tok.write.approve([lg.address, entryFee * 2n], { account: player.account });
     await lg.write.enter([`0x${"ab".repeat(32)}` as Hex], { account: player.account });
@@ -287,7 +287,7 @@ describe("League", () => {
     const lg = await connection.viem.deployContract("League", [
       creator.account.address, oracle.account.address, devWalletClient.account.address,
       200n, 300n,
-      { token: token.address, entryFee: 1_000_000_000_000_000_000n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionPolicy: 0, lockTime: lt },
+      { token: token.address, entryFee: 1_000_000_000_000_000_000n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime: lt },
     ]);
     await advancePast(lt);
     // Should not revert, state stays Active=0
@@ -385,6 +385,7 @@ describe("League", () => {
         maxEntries: 0n,
         maxEntriesPerWallet: 5n,
         minThreshold: 2n,
+        revisionFee: 0n,
         revisionPolicy: 0,
         lockTime,
       },
@@ -630,7 +631,7 @@ describe("League", () => {
     await assert.rejects(
       connection.viem.deployContract("League", [
         zero, oracle.account.address, devWalletClient.account.address, 200n, 300n,
-        { token: token.address, entryFee: 1n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionPolicy: 0, lockTime: lt },
+        { token: token.address, entryFee: 1n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime: lt },
       ]),
       (err: Error) => err.message.includes("InvalidAddress")
     );
@@ -647,7 +648,7 @@ describe("League", () => {
       connection.viem.deployContract("League", [
         creator.account.address, oracle.account.address, devWalletClient.account.address,
         600n, 500n, // 6% + 5% = 11% > 10%
-        { token: token.address, entryFee: 1n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionPolicy: 0, lockTime: lt },
+        { token: token.address, entryFee: 1n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime: lt },
       ]),
       (err: Error) => err.message.includes("InvalidParams")
     );

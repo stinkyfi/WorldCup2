@@ -143,6 +143,12 @@ contract LeagueFactory is Ownable, ReentrancyGuard {
             revert TokenNotWhitelisted(params.token);
         if (params.entryFee == 0) revert InvalidParams();
         if (params.lockTime <= block.timestamp) revert InvalidParams();
+        // Paid revision policy requires a non-zero revisionFee; non-paid policies must have zero fee.
+        if (params.revisionPolicy == RevisionPolicy.Paid) {
+            if (params.revisionFee == 0) revert InvalidParams();
+        } else {
+            if (params.revisionFee != 0) revert InvalidParams();
+        }
 
         League newLeague = new League(
             msg.sender,

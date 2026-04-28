@@ -12,6 +12,7 @@ function makeValidParams(tokenAddress: `0x${string}`, baseTimestamp?: bigint) {
     maxEntries: 100n,
     maxEntriesPerWallet: 5n,
     minThreshold: 10n,
+    revisionFee: 0n,
     revisionPolicy: 0,   // RevisionPolicy.Locked
     lockTime: base + 7n * 24n * 60n * 60n,
   } as const;
