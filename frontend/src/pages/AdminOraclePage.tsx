@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { type Address, getAddress } from "viem";
-import { useAccount, useChainId, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,10 @@ export function AdminOraclePage() {
   const [txBusy, setTxBusy] = useState(false);
   const [txError, setTxError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
+  const [extendSeconds, setExtendSeconds] = useState<string>("3600");
+  const [extendBusy, setExtendBusy] = useState(false);
+  const [extendError, setExtendError] = useState<string | null>(null);
+  const [extendHash, setExtendHash] = useState<`0x${string}` | null>(null);
 
   const stagingQuery = useQuery({
     queryKey: ["admin-oracle-staging-groups"],
@@ -50,6 +54,28 @@ export function AdminOraclePage() {
   }, [chainId]);
 
   const controllerAddr = controllerAddress ? (getAddress(controllerAddress) as Address) : null;
+  const supported = [1, 146, 8453, 84532] as const;
+  const chainIdTyped = supported.includes(chainId as (typeof supported)[number])
+    ? (chainId as 1 | 146 | 8453 | 84532)
+    : null;
+
+  const { data: expectedDeadline } = useReadContract({
+    address: controllerAddr ?? undefined,
+    abi: oracleControllerAbi,
+    functionName: "expectedDeadline",
+    args: [groupId],
+    chainId: chainIdTyped ?? undefined,
+    query: { enabled: Boolean(controllerAddr && chainIdTyped) },
+  });
+
+  const { data: resultsPosted } = useReadContract({
+    address: controllerAddr ?? undefined,
+    abi: oracleControllerAbi,
+    functionName: "hasResultsPosted",
+    args: [groupId],
+    chainId: chainIdTyped ?? undefined,
+    query: { enabled: Boolean(controllerAddr && chainIdTyped) },
+  });
 
   async function onPrefillFromStaging() {
     if (!selectedStaging) return;
@@ -67,8 +93,7 @@ export function AdminOraclePage() {
       setTxError(`Oracle controller is not configured for chain ${chainId}.`);
       return;
     }
-    const supported = [1, 146, 8453, 84532] as const;
-    if (!supported.includes(chainId as (typeof supported)[number])) {
+    if (!chainIdTyped) {
       setTxError(`Unsupported chainId ${chainId}.`);
       return;
     }
@@ -79,7 +104,7 @@ export function AdminOraclePage() {
 
     try {
       setTxBusy(true);
-      await switchChainAsync({ chainId: chainId as (typeof supported)[number] });
+      await switchChainAsync({ chainId: chainIdTyped });
 
       const addresses = rankings.map((k) => teamKeyToAddress(`group:${groupId}:${k}`)) as unknown as [
         Address,
@@ -88,7 +113,6 @@ export function AdminOraclePage() {
         Address,
       ];
 
-      const chainIdTyped = chainId as 1 | 146 | 8453 | 84532;
       const hash = await writeContractAsync({
         address: controllerAddr,
         abi: oracleControllerAbi,
@@ -106,6 +130,52 @@ export function AdminOraclePage() {
       else setTxError("Post failed. Please try again.");
     } finally {
       setTxBusy(false);
+    }
+  }
+
+  async function onExtendGrace() {
+    setExtendError(null);
+    setExtendHash(null);
+    if (!isConnected) {
+      setExtendError("Connect a wallet to extend grace period.");
+      return;
+    }
+    if (!controllerAddr) {
+      setExtendError(`Oracle controller is not configured for chain ${chainId}.`);
+      return;
+    }
+    if (!chainIdTyped) {
+      setExtendError(`Unsupported chainId ${chainId}.`);
+      return;
+    }
+    const trimmed = extendSeconds.trim();
+    if (!/^\d+$/.test(trimmed)) {
+      setExtendError("Additional seconds must be a whole number.");
+      return;
+    }
+    const sec = BigInt(trimmed);
+    if (sec <= 0n) {
+      setExtendError("Additional seconds must be > 0.");
+      return;
+    }
+    try {
+      setExtendBusy(true);
+      await switchChainAsync({ chainId: chainIdTyped });
+      const hash = await writeContractAsync({
+        address: controllerAddr,
+        abi: oracleControllerAbi,
+        functionName: "extendGracePeriod",
+        args: [groupId, sec],
+        chainId: chainIdTyped,
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash, chainId: chainIdTyped });
+      setExtendHash(hash);
+    } catch (e) {
+      const m = (e as Error | null | undefined)?.message ?? "";
+      if (m.toLowerCase().includes("rejected")) setExtendError("Transaction rejected in wallet.");
+      else setExtendError("Extend grace period failed. Please try again.");
+    } finally {
+      setExtendBusy(false);
     }
   }
 
@@ -161,6 +231,49 @@ export function AdminOraclePage() {
               Prefill unavailable (configure backend `ORACLE_STAGING_GROUPS_JSON`).
             </p>
           ) : null}
+
+          <div className="w-full pt-2 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">On-chain status:</span>{" "}
+            {typeof resultsPosted === "boolean" ? (resultsPosted ? "posted" : "missing") : "—"} •{" "}
+            <span className="font-medium text-foreground">Expected deadline:</span>{" "}
+            {typeof expectedDeadline !== "undefined" ? expectedDeadline.toString() : "—"}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle className="text-lg">Grace period</CardTitle>
+          <CardDescription>Extend the expected deadline for this group (owner only).</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-end gap-3">
+          <div className="min-w-48">
+            <label className="text-sm font-medium text-foreground" htmlFor="extendSeconds">
+              Additional seconds
+            </label>
+            <input
+              id="extendSeconds"
+              className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={extendSeconds}
+              onChange={(e) => setExtendSeconds(e.target.value)}
+              inputMode="numeric"
+              placeholder="e.g. 3600"
+            />
+          </div>
+          <Button
+            type="button"
+            className="min-h-11"
+            disabled={!controllerAddr || extendBusy}
+            onClick={() => void onExtendGrace()}
+          >
+            {extendBusy ? "Extending…" : "Extend grace"}
+          </Button>
+          {extendHash ? (
+            <div className="w-full rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
+              Grace extended. Tx: <code className="rounded bg-muted px-1">{extendHash}</code>
+            </div>
+          ) : null}
+          {extendError ? <p className="w-full text-sm text-destructive">{extendError}</p> : null}
         </CardContent>
       </Card>
 
