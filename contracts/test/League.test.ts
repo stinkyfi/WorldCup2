@@ -254,7 +254,7 @@ describe("League", () => {
     assert.equal(balA - balB, entryFee * 2n);
   });
 
-  it("double claimRefund reverts NoRefundDue", async () => {
+  it("double claimRefund reverts AlreadyClaimed", async () => {
     const { league, token, player1, entryFee, lockTime } = await deployLeague();
     await token.write.approve([league.address, entryFee], { account: player1.account });
     await league.write.enter([`0x${"ab".repeat(32)}` as Hex], { account: player1.account });
@@ -263,7 +263,7 @@ describe("League", () => {
     await league.write.claimRefund({ account: player1.account });
     await assert.rejects(
       league.simulate.claimRefund({ account: player1.account }),
-      (err: Error) => err.message.includes("NoRefundDue")
+      (err: Error) => err.message.includes("AlreadyClaimed")
     );
   });
 

@@ -169,7 +169,8 @@ contract League is ReentrancyGuard {
     function claimRefund() external nonReentrant {
         if (state != LeagueState.Refunding) revert LeagueNotRefunding();
         uint256 entries = _walletEntryCount[msg.sender];
-        if (entries == 0 || _refundClaimed[msg.sender]) revert NoRefundDue();
+        if (entries == 0) revert NoRefundDue();
+        if (_refundClaimed[msg.sender]) revert AlreadyClaimed();
         _refundClaimed[msg.sender] = true;
         uint256 refundAmount = entries * entryFee;
         IERC20(token).safeTransfer(msg.sender, refundAmount);

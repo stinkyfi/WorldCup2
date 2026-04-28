@@ -78,7 +78,7 @@ development_status:
   epic-3: in-progress
   3-1-league-creation-wizard-chain-token-and-fee-limits: done
   3-2-league-creation-wizard-revision-policy-promotion-review-and-on-chain-tx: done
-  3-3-minimum-player-threshold-and-refund: backlog
+  3-3-minimum-player-threshold-and-refund: done
   3-4-creator-dashboard: backlog
   epic-3-retrospective: optional
 
