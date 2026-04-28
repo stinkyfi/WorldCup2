@@ -62,8 +62,8 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 2: Wallet, Auth & Public Browse
   # ─────────────────────────────────────────────────────────────
-  epic-2: backlog
-  2-1-landing-page-and-platform-stats: backlog
+  epic-2: in-progress
+  2-1-landing-page-and-platform-stats: done
   2-2-wallet-connect-and-siwe-auth: backlog
   2-3-admin-auth-and-chain-switch-re-verification: backlog
   2-4-league-browse-page-list-filters-and-sort: backlog

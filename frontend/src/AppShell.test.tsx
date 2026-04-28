@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { Providers } from "./Providers";
 
@@ -12,10 +14,14 @@ afterEach(() => {
   setViewportWidth(1024);
 });
 
+function renderWithRouter(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
+
 describe("AppShell", () => {
   it("renders centred nav on large viewports and logo + connect affordance", () => {
     setViewportWidth(1280);
-    render(
+    renderWithRouter(
       <Providers>
         <AppShell>
           <div>child</div>
@@ -33,7 +39,7 @@ describe("AppShell", () => {
 
   it("exposes a 44px mobile menu control below the lg breakpoint", () => {
     setViewportWidth(375);
-    render(
+    renderWithRouter(
       <Providers>
         <AppShell>
           <span>main</span>
