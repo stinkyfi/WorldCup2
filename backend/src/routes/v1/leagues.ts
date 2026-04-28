@@ -7,8 +7,14 @@ import {
   buildLeagueBrowseWhere,
   partitionBrowseRows,
   toBrowseLeaguePublic,
+  isSpotlightLeague,
   type BrowseSortKey,
 } from "../../lib/leagueBrowse.js";
+import { computeFeeBreakdown } from "../../lib/leagueFees.js";
+
+const addressParamSchema = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address");
 
 const createLeagueBody = z.object({
   chainId: z.number().int().positive(),
@@ -71,6 +77,38 @@ function serializeLeagueRow(l: League) {
  * parameterized queries only (no string-concat SQL), satisfying NFR7/NFR8.
  */
 export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.get("/leagues/by-address/:address", async (request, reply) => {
+    const parsed = addressParamSchema.safeParse((request.params as { address?: unknown })?.address);
+    if (!parsed.success) {
+      throw parsed.error;
+    }
+    const address = parsed.data;
+    const row = await prisma.league.findFirst({
+      where: { contractAddress: { equals: address, mode: "insensitive" } },
+    });
+    if (!row) {
+      return reply.status(404).send({ error: "League not found", code: "NOT_FOUND" });
+    }
+
+    const feeBreakdown = computeFeeBreakdown({
+      entryFeeWei: row.entryFeeWei,
+      creatorFeeBps: row.creatorFeeBps,
+      devFeeBps: row.devFeeBps,
+    });
+
+    return sendSuccess(reply, {
+      league: {
+        ...toBrowseLeaguePublic(row),
+        creatorAddress: row.creatorAddress,
+        creatorDescription: row.creatorDescription,
+        revisionPolicy: row.revisionPolicy,
+        entryTokenDecimals: row.entryTokenDecimals,
+        isFeatured: isSpotlightLeague(row),
+        feeBreakdown,
+      },
+    });
+  });
+
   fastify.get("/leagues/browse", async (request, reply) => {
     const parsed = browseQuerySchema.safeParse(
       normalizeQuery(request.query as Record<string, string | string[] | undefined>),

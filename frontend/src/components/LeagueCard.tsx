@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { chainLabel, type BrowseLeague } from "@/lib/leagueBrowse";
 import { formatTimeToLock, formatTokenWei } from "@/lib/leagueDisplay";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 export type LeagueCardProps = {
   league: BrowseLeague;
@@ -10,11 +11,12 @@ export type LeagueCardProps = {
 };
 
 export function LeagueCard({ league, spotlight }: LeagueCardProps) {
-  return (
+  const clickable = Boolean(league.contractAddress);
+  const card = (
     <Card
       className={cn(
         "flex h-full flex-col transition-shadow",
-        spotlight ? "border-primary/50 shadow-md" : "hover:border-border/80 hover:shadow-sm",
+        spotlight ? "border-primary/50 shadow-md" : clickable ? "hover:border-border/80 hover:shadow-sm" : "",
       )}
     >
       <CardHeader className="pb-2">
@@ -48,6 +50,19 @@ export function LeagueCard({ league, spotlight }: LeagueCardProps) {
           <dd className="text-right font-medium text-foreground">{formatTimeToLock(league.lockAt)}</dd>
         </dl>
       </CardContent>
-    </Card>
+      </Card>
   );
+
+  if (clickable) {
+    return (
+      <Link
+        to={`/league/${league.contractAddress}`}
+        className={cn("block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}
+        aria-label={`Open league ${league.title}`}
+      >
+        {card}
+      </Link>
+    );
+  }
+  return <div className="block h-full">{card}</div>;
 }

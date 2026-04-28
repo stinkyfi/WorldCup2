@@ -67,7 +67,7 @@ development_status:
   2-2-wallet-connect-and-siwe-auth: done
   2-3-admin-auth-and-chain-switch-re-verification: done
   2-4-league-browse-page-list-filters-and-sort: done
-  2-5-league-detail-page-and-fee-breakdown: backlog
+  2-5-league-detail-page-and-fee-breakdown: done
   2-6-og-share-meta-tags: backlog
   2-7-get-a-wallet-helper: backlog
   epic-2-retrospective: optional

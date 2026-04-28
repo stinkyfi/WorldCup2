@@ -6,6 +6,7 @@ import { AdminPlaceholderPage } from "@/pages/AdminPlaceholderPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { BrowsePage } from "@/pages/BrowsePage";
 import { CreatePlaceholderPage } from "@/pages/CreatePlaceholderPage";
+import { LeagueDetailPage } from "@/pages/LeagueDetailPage";
 import { MyLeaguesPlaceholderPage } from "@/pages/MyLeaguesPlaceholderPage";
 
 export function AppRoutes() {
@@ -14,6 +15,7 @@ export function AppRoutes() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/browse" element={<BrowsePage />} />
+        <Route path="/league/:address" element={<LeagueDetailPage />} />
         <Route
           path="/create"
           element={

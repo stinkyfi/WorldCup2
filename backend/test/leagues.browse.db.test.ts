@@ -23,7 +23,7 @@ test(
         {
           chainId: 84532,
           title: `${prefix} featured`,
-          entryTokenSymbol: "USDC",
+          entryTokenSymbol: "BROWSEUSDC",
           entryTokenAddress: "0x1111111111111111111111111111111111111111",
           entryFeeWei: 50n,
           poolWei: 1000n,
@@ -36,7 +36,7 @@ test(
         {
           chainId: 84532,
           title: `${prefix} promoted`,
-          entryTokenSymbol: "USDC",
+          entryTokenSymbol: "BROWSEUSDC",
           entryTokenAddress: "0x2222222222222222222222222222222222222222",
           entryFeeWei: 20n,
           poolWei: 500n,
@@ -65,7 +65,7 @@ test(
     const app = await createApp();
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/leagues/browse?chainId=84532&entryToken=usdc&sort=poolWei&order=desc",
+      url: "/api/v1/leagues/browse?chainId=84532&entryToken=browseusdc&sort=poolWei&order=desc",
     });
     assert.equal(res.statusCode, 200);
     const body = JSON.parse(res.body) as {
