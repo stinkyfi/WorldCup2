@@ -52,10 +52,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Link
             to="/"
+            aria-label="DegenDraft home"
             className="flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-foreground"
           >
-            <span className="font-mono text-primary">WC2</span>
-            <span className="hidden sm:inline">WorldCup2</span>
+            <img
+              src="/DegenDraft.png"
+              alt=""
+              width={176}
+              height={40}
+              decoding="async"
+              className="h-9 w-auto max-h-10 max-w-[min(100%,11rem)] object-contain object-left sm:h-10 sm:max-h-11 sm:max-w-52"
+            />
           </Link>
 
           <nav

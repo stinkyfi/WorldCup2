@@ -79,7 +79,7 @@ test(
     const siwe = new SiweMessage({
       domain: "localhost:5173",
       address: account.address,
-      statement: "Sign in with Ethereum to WorldCup2.",
+      statement: "Sign in with Ethereum to DegenDraft.",
       uri: "http://localhost:5173",
       version: "1",
       chainId: 84532,
@@ -144,7 +144,7 @@ test(
     const siwe = new SiweMessage({
       domain: "localhost:5173",
       address: account.address,
-      statement: "Sign in with Ethereum to WorldCup2.",
+      statement: "Sign in with Ethereum to DegenDraft.",
       uri: "http://localhost:5173",
       version: "1",
       chainId: 84532,
@@ -185,7 +185,7 @@ test(
       const siwe = new SiweMessage({
         domain: "localhost:5173",
         address: account.address,
-        statement: "Sign in with Ethereum to WorldCup2.",
+        statement: "Sign in with Ethereum to DegenDraft.",
         uri: "http://localhost:5173",
         version: "1",
         chainId: 84532,
@@ -245,7 +245,7 @@ test(
       const siwe = new SiweMessage({
         domain: "localhost:5173",
         address: account.address,
-        statement: "Sign in with Ethereum to WorldCup2.",
+        statement: "Sign in with Ethereum to DegenDraft.",
         uri: "http://localhost:5173",
         version: "1",
         chainId: 84532,
@@ -310,7 +310,7 @@ test(
     const siwe = new SiweMessage({
       domain: "localhost:5173",
       address: account.address,
-      statement: "Sign in with Ethereum to WorldCup2.",
+      statement: "Sign in with Ethereum to DegenDraft.",
       uri: "http://localhost:5173",
       version: "1",
       chainId: 84532,
@@ -357,7 +357,7 @@ test(
       const siwe = new SiweMessage({
         domain: "localhost:5173",
         address: account.address,
-        statement: "Sign in with Ethereum to WorldCup2.",
+        statement: "Sign in with Ethereum to DegenDraft.",
         uri: "http://localhost:5173",
         version: "1",
         chainId: 84532,

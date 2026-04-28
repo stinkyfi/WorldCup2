@@ -82,7 +82,7 @@ async function main() {
         if (posted) continue;
 
         const msg = [
-          `WorldCup2 oracle alert`,
+          `DegenDraft oracle alert`,
           `- chainId: ${chainId}`,
           `- ${groupLabel(groupId)}`,
           `- expectedDeadline: ${deadline.toString()} (unix seconds)`,

@@ -1,7 +1,7 @@
 # Implementation Readiness Assessment Report
 
 **Date:** 2026-04-26
-**Project:** WorldCup2
+**Project:** DegenDraft
 **Assessor:** BMad Implementation Readiness Skill
 
 ---

@@ -10,14 +10,14 @@ classification:
   projectContext: greenfield
 ---
 
-# Product Requirements Document - WorldCup2
+# Product Requirements Document - DegenDraft
 
 **Author:** Stinky
 **Date:** 2026-04-26
 
 ## Executive Summary
 
-WorldCup2 is an on-chain group stage prediction platform for FIFA World Cup 2026. Users rank the 12 World Cup groups (A–L), each containing 4 teams, before the tournament locks. A total goals tiebreaker resolves ties. Prize pools are held entirely in smart contracts — no custodian, no admin access to funds — and settle automatically after the 24-hour dispute window clears.
+DegenDraft is an on-chain group stage prediction platform for FIFA World Cup 2026. Users rank the 12 World Cup groups (A–L), each containing 4 teams, before the tournament locks. A total goals tiebreaker resolves ties. Prize pools are held entirely in smart contracts — no custodian, no admin access to funds — and settle automatically after the 24-hour dispute window clears.
 
 The platform targets three audiences: **crypto-native players** seeking a novel World Cup engagement beyond binary outcome bets; **league creators** who currently run prediction pools via group chats and want a trustless, self-managing alternative with automatic payouts; and **crypto projects** using the World Cup as a community engagement vehicle by running leagues denominated in their own whitelisted token.
 
@@ -25,7 +25,7 @@ Chains supported at launch: Base, Ethereum, and Sonic. Pools are chain-isolated;
 
 ### What Makes This Special
 
-The office prediction pool format — rank the groups, closest total-goals tiebreaker wins — is universally understood and requires no onboarding explanation. WorldCup2 takes that format and replaces the group-chat trust model with smart contract enforcement: predictions are on-chain, funds are locked in contract, payouts are triggered by a verifiable oracle sourced from api-football.com, and all fee rates are immutably locked at league creation.
+The office prediction pool format — rank the groups, closest total-goals tiebreaker wins — is universally understood and requires no onboarding explanation. DegenDraft takes that format and replaces the group-chat trust model with smart contract enforcement: predictions are on-chain, funds are locked in contract, payouts are triggered by a verifiable oracle sourced from api-football.com, and all fee rates are immutably locked at league creation.
 
 The three-sided model is the core business insight. Players get a familiar game. Creators get a zero-overhead viral league with referral tracking and optional bonding curve pricing. Crypto projects get a structured World Cup engagement campaign — entering the $100 token whitelist queue puts their token in front of active crypto users with a concrete in-group use case.
 
@@ -128,11 +128,11 @@ Full platform: prediction entry, on-chain fund custody, oracle, dispute resoluti
 
 **Persona:** Dev Haus, a mid-size Solana DeFi project with 8,000 Discord members. Their community manager, Priya, is looking for a World Cup engagement campaign. Their token ($HAUS) is already on Solana.
 
-**Opening Scene:** Priya hears about WorldCup2 through a crypto Twitter thread. She visits the site, checks the token whitelist page. $HAUS isn't listed. She submits a whitelist request — pays $100 USDC equivalent, adds token address, chain (Solana), and a brief description. Community upvotes the request in the public queue within hours.
+**Opening Scene:** Priya hears about DegenDraft through a crypto Twitter thread. She visits the site, checks the token whitelist page. $HAUS isn't listed. She submits a whitelist request — pays $100 USDC equivalent, adds token address, chain (Solana), and a brief description. Community upvotes the request in the public queue within hours.
 
 **Rising Action:** Admin approves within 48 hours. Priya connects wallet, clicks "Create a League," selects Solana, selects $HAUS as the entry token, sets entry fee at 50 $HAUS, max 200 entries, bonding curve off, minimum threshold of 30 players. She reviews the immutability warning, pays the creation fee, signs. League is live.
 
-She drops the referral link in Discord: "WorldCup2 prediction pool — 50 $HAUS entry, winner takes the pot, smart contract pays out automatically. Rank the groups, tiebreaker is total goals." Within 6 hours, 47 entries. Her referral conversions counter is climbing.
+She drops the referral link in Discord: "DegenDraft prediction pool — 50 $HAUS entry, winner takes the pot, smart contract pays out automatically. Rank the groups, tiebreaker is total goals." Within 6 hours, 47 entries. Her referral conversions counter is climbing.
 
 **Climax:** League locks 24h before kick-off. Priya posts the leaderboard weekly in Discord. The community is engaged — members tagging each other, debating Group G predictions. Token activity spikes.
 

@@ -35,7 +35,7 @@ function parseCsvInts(v: string): number[] {
 function teamKeyToAddress(teamKey: string): Address {
   // Deterministic pseudo-address to represent a team identity on-chain.
   // Not required to be a contract; only used as an identifier for rankings.
-  const h = keccak256(toBytes(`wc2:${teamKey}`));
+  const h = keccak256(toBytes(`dd:${teamKey}`));
   return getAddress(`0x${h.slice(-40)}` as `0x${string}`);
 }
 

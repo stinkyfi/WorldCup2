@@ -17,7 +17,7 @@ Players visiting **`/league/:address/enter`** after the league contract has a **
 - **Claim prize** shows when **`rank ≤ 10`** (`PLACEHOLDER_PRIZE_RANK_CAP`). Epic 8 should replace this with Merkle-backed eligibility.
 
 ### Share result
-- Uses **`navigator.share`** when available; otherwise copies **`WorldCup2 — {title}`**, rank/score line, and deep link to the entry URL (preserves `entryId` query param when present).
+- Uses **`navigator.share`** when available; otherwise copies **`DegenDraft — {title}`**, rank/score line, and deep link to the entry URL (preserves `entryId` query param when present).
 
 ### Backend
 - Reuses existing **`GET /api/v1/leaderboard`** and **`GET /api/v1/leaderboard/breakdown`** (no new routes).

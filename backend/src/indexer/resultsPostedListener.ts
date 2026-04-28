@@ -20,8 +20,17 @@ function parseCsvInts(v: string): number[] {
     .filter((n) => Number.isFinite(n));
 }
 
+/** Optional: actual FIFA group-stage total goals; when unset, leaderboard ranks by score only (dense ranks). */
+function parseActualTotalGoals(): number | null {
+  const raw = process.env.GROUP_STAGE_ACTUAL_TOTAL_GOALS;
+  if (raw === undefined || raw.trim() === "") return null;
+  const n = Number(raw.trim());
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function runResultsPostedIndexerOnce(params?: { chainId?: number }): Promise<void> {
   const chainIds = params?.chainId ? [params.chainId] : parseCsvInts(mustGetEnv("ORACLE_CHAIN_IDS"));
+  const actualTotalGoals = parseActualTotalGoals();
 
   for (const chainId of chainIds) {
     const controller = getAddress(mustGetEnv(`ORACLE_CONTROLLER_${chainId}`)) as Address;

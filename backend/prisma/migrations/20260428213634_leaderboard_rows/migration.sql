@@ -1,6 +1,3 @@
--- AlterTable
-ALTER TABLE "leagues" ALTER COLUMN "lock_at" SET DEFAULT (CURRENT_TIMESTAMP + INTERVAL '30 days');
-
 -- CreateTable
 CREATE TABLE "leaderboard_rows" (
     "id" TEXT NOT NULL,

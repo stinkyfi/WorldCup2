@@ -365,7 +365,7 @@ export {};
 
 ### Project Structure Notes
 
-- **Repo root is `WorldCup2/`** — the `contracts/` project lives at `WorldCup2/contracts/`. All paths in this story are relative to `WorldCup2/`.
+- **Repo root is `DegenDraft/`** — the `contracts/` project lives at `DegenDraft/contracts/`. All paths in this story are relative to `DegenDraft/`.
 - **`package.json` at `contracts/` level only** — no root-level `package.json` monorepo setup for this story. Backend and frontend get their own in Stories 1.8 and 1.9.
 - **No `contracts/ignition/`** — architecture uses manual Hardhat scripts (Story 1.7), not Hardhat Ignition modules.
 

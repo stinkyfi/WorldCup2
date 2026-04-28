@@ -30,7 +30,7 @@ describe("AppShell", () => {
     );
 
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /WC2/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /DegenDraft/i })).toBeInTheDocument();
     expect(screen.getByText("Browse")).toBeInTheDocument();
     expect(screen.getByText("My Leagues")).toBeInTheDocument();
     expect(screen.getByText("Create")).toBeInTheDocument();

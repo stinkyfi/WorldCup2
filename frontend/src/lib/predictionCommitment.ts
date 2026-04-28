@@ -39,7 +39,7 @@ export function computePredictionCommitment(payload: PredictionPayloadV2): `0x${
 }
 
 export function predictionStorageKeyV2(leagueAddress: string, walletAddress: string): string {
-  return `wc2:prediction:v2:${leagueAddress.toLowerCase()}:${walletAddress.toLowerCase()}`;
+  return `dd:prediction:v2:${leagueAddress.toLowerCase()}:${walletAddress.toLowerCase()}`;
 }
 
 export type StoredPredictionsV2 = {
@@ -112,6 +112,20 @@ export function loadAllPredictionsFromStorage(leagueAddress: string, walletAddre
   const key = predictionStorageKeyV2(leagueAddress, walletAddress);
   const raw = window.localStorage.getItem(key);
   if (!raw) {
+    // Migration: read legacy localStorage keys (`wc2:` prefix) if present.
+    const legacyKey = `wc2:prediction:v2:${leagueAddress.toLowerCase()}:${walletAddress.toLowerCase()}`;
+    const legacyRaw = window.localStorage.getItem(legacyKey);
+    if (legacyRaw) {
+      try {
+        const parsed = JSON.parse(legacyRaw) as StoredPredictionsV2;
+        if (parsed && parsed.version === 2 && Array.isArray(parsed.entries)) {
+          window.localStorage.setItem(key, stableJsonStringify(parsed));
+          return parsed;
+        }
+      } catch {
+        // ignore
+      }
+    }
     return {
       version: 2,
       leagueAddress: leagueAddress as `0x${string}`,

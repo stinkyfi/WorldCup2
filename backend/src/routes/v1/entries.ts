@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db.js";
 import { sendError, sendSuccess } from "../../lib/envelope.js";
@@ -55,13 +56,13 @@ export const entryRoutes: FastifyPluginAsync = async (fastify) => {
         entryIndex: b.entryIndex,
         entryId: b.entryId,
         commitment: b.commitment.toLowerCase(),
-        groups: b.groups as unknown,
+        groups: b.groups as Prisma.InputJsonValue,
         tiebreakerTotalGoals: b.tiebreakerTotalGoals,
       },
       update: {
         entryId: b.entryId,
         commitment: b.commitment.toLowerCase(),
-        groups: b.groups as unknown,
+        groups: b.groups as Prisma.InputJsonValue,
         tiebreakerTotalGoals: b.tiebreakerTotalGoals,
       },
       select: { id: true },

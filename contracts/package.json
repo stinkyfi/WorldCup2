@@ -1,7 +1,7 @@
 {
-  "name": "worldcup2-contracts",
+  "name": "degendraft-contracts",
   "version": "1.0.0",
-  "description": "WorldCup2 smart contracts — Hardhat TypeScript project",
+  "description": "DegenDraft smart contracts — Hardhat TypeScript project",
   "type": "module",
   "scripts": {
     "compile": "hardhat compile",

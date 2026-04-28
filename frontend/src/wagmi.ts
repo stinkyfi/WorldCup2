@@ -51,7 +51,7 @@ export const sonicMainnet = defineChain({
  * mainnets for Story 3.2 `createLeague` on the chains offered in the wizard.
  */
 export const wagmiConfig = getDefaultConfig({
-  appName: "WorldCup2",
+  appName: "DegenDraft",
   projectId: walletConnectProjectId(),
   chains: [baseSepolia, baseMainnet, ethereumMainnet, sonicMainnet],
   ssr: false,

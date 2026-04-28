@@ -2,7 +2,7 @@ import { getAddress, keccak256, toBytes, type Address } from "viem";
 import { groupLetterFromId, teamKeysForGroupLetter } from "../lib/worldCupGroups.js";
 
 export function teamKeyToAddress(teamKey: string): Address {
-  const h = keccak256(toBytes(`wc2:${teamKey}`));
+  const h = keccak256(toBytes(`dd:${teamKey}`));
   return getAddress(`0x${h.slice(-40)}` as `0x${string}`);
 }
 

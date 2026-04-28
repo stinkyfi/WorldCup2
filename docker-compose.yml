@@ -1,23 +1,23 @@
-# Local PostgreSQL for WorldCup2 (Story 1.8+)
+# Local PostgreSQL for DegenDraft (Story 1.8+)
 # Usage: docker compose up -d
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: worldcup2-postgres
+    container_name: degendraft-postgres
     # Host 5433 avoids clashing with a local PostgreSQL install on 5432 (Windows/macOS).
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: worldcup2
-      POSTGRES_PASSWORD: worldcup2_dev
-      POSTGRES_DB: worldcup2
+      POSTGRES_USER: degendraft
+      POSTGRES_PASSWORD: degendraft_dev
+      POSTGRES_DB: degendraft
     volumes:
-      - wc2_pgdata:/var/lib/postgresql/data
+      - degendraft_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U worldcup2 -d worldcup2"]
+      test: ["CMD-SHELL", "pg_isready -U degendraft -d degendraft"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  wc2_pgdata:
+  degendraft_pgdata:

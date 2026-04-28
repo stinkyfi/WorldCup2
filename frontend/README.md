@@ -1,4 +1,4 @@
-# WorldCup2 frontend
+# DegenDraft frontend
 
 Vite + React + RainbowKit. **Dev with API:** run the backend on port **3001** (`cd ../backend && npm run dev`); Vite proxies `/api` to `http://127.0.0.1:3001` so the landing stats load without extra CORS setup. Override with `VITE_API_BASE_URL` if needed.
 

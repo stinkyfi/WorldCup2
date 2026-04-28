@@ -20,7 +20,7 @@ _Source: `_bmad-output/planning-artifacts/epics.md` — Epic 4, Story 4.7._
 
 - **Prediction storage**
   - Upgraded to `PredictionPayloadV2` (adds `entryId` + `walletAddress`) and stores multiple entries in localStorage under:
-    - `wc2:prediction:v2:<leagueAddress>:<walletAddress>`
+    - `dd:prediction:v2:<leagueAddress>:<walletAddress>`
   - Added best-effort migration from the old single-entry v1 key.
 - **Routing**
   - `LeaguePredictPage` accepts `?entryId=...` (optional). If absent, it creates a new `entryId`.

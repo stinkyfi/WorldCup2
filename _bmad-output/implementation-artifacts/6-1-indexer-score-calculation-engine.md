@@ -37,7 +37,7 @@ Files:
     - Updates `indexer_state.last_processed_block`
 
 Scoring implementation:
-- `backend/src/indexer/scoring.ts` uses the same deterministic team-key→address mapping (`wc2:${teamKey}`) as the oracle cron.
+- `backend/src/indexer/scoring.ts` uses the same deterministic team-key→address mapping (`dd:${teamKey}`) as the oracle cron.
 
 ### Tests
 - Added unit coverage for scoring:

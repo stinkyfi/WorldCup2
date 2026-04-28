@@ -3,11 +3,11 @@ stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-c
 inputDocuments: ['_bmad-output/planning-artifacts/prd.md', '_bmad-output/planning-artifacts/architecture.md', '_bmad-output/planning-artifacts/ux-design-specification.md']
 ---
 
-# WorldCup2 - Epic Breakdown
+# DegenDraft - Epic Breakdown
 
 ## Overview
 
-This document provides the complete epic and story breakdown for WorldCup2, decomposing the requirements from the PRD and Architecture into implementable stories.
+This document provides the complete epic and story breakdown for DegenDraft, decomposing the requirements from the PRD and Architecture into implementable stories.
 
 ## Requirements Inventory
 

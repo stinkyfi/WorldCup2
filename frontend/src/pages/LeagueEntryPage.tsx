@@ -102,7 +102,7 @@ function ResolvedEntrySection(props: {
       entryId ? `?entryId=${encodeURIComponent(entryId)}` : ""
     }`;
     const lines = [
-      `WorldCup2 — ${leagueTitle}`,
+      `DegenDraft — ${leagueTitle}`,
       typeof rank === "number" && typeof score === "number" ? `#${rank} · ${score} pts` : "",
       url,
     ].filter(Boolean);

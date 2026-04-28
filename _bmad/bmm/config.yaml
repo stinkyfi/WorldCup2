@@ -3,7 +3,7 @@
 # Version: 6.5.0
 # Date: 2026-04-27T00:23:07.397Z
 
-project_name: WorldCup2
+project_name: DegenDraft
 user_skill_level: intermediate
 planning_artifacts: "{project-root}/_bmad-output/planning-artifacts"
 implementation_artifacts: "{project-root}/_bmad-output/implementation-artifacts"

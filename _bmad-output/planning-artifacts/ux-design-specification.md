@@ -4,7 +4,7 @@ status: complete
 inputDocuments: ['_bmad-output/planning-artifacts/prd.md', '_bmad-output/planning-artifacts/architecture.md']
 ---
 
-# UX Design Specification WorldCup2
+# UX Design Specification DegenDraft
 
 **Author:** Stinky
 **Date:** 2026-04-26
@@ -17,7 +17,7 @@ inputDocuments: ['_bmad-output/planning-artifacts/prd.md', '_bmad-output/plannin
 
 ### Project Vision
 
-WorldCup2 is a trustless, on-chain prediction league platform for World Cup 2026. Players pay an entry fee (any whitelisted ERC-20 token) to submit group stage predictions across all 12 groups, compete on a live leaderboard as matches resolve, and claim prizes via Merkle proof — no admin required to distribute winnings. Creators launch leagues for their communities (Discord, Telegram, friend groups) and earn a 3% fee. The platform runs on Base, Ethereum, and Sonic mainnet with a hard deadline of June 11, 2026.
+DegenDraft is a trustless, on-chain prediction league platform for World Cup 2026. Players pay an entry fee (any whitelisted ERC-20 token) to submit group stage predictions across all 12 groups, compete on a live leaderboard as matches resolve, and claim prizes via Merkle proof — no admin required to distribute winnings. Creators launch leagues for their communities (Discord, Telegram, friend groups) and earn a 3% fee. The platform runs on Base, Ethereum, and Sonic mainnet with a hard deadline of June 11, 2026.
 
 ### Target Users
 
@@ -92,7 +92,7 @@ Web application, responsive across desktop and mobile. No native app.
 
 ### Primary Emotional Goals
 
-WorldCup2 should feel like a **sports moment first, crypto platform second**. The World Cup is one of the most emotionally charged events in sport. The platform's UX should borrow that energy — competitive, communal, high-stakes — and let the crypto rails stay invisible to those who don't care about them.
+DegenDraft should feel like a **sports moment first, crypto platform second**. The World Cup is one of the most emotionally charged events in sport. The platform's UX should borrow that energy — competitive, communal, high-stakes — and let the crypto rails stay invisible to those who don't care about them.
 
 **Primary emotional goal:** Players feel like active participants in the World Cup, not users of a financial product.
 
@@ -151,10 +151,10 @@ The gold standard for live competitive leaderboards. Rank delta is the hero metr
 Clean, data-forward UI built for crypto-native users. Trust signals (liquidity, number of traders) are prominent without being intimidating. Market card layout maps cleanly to league browse cards. Good mobile web experience without a native app. Anti-pattern: purely financial tone with no sports energy or personality — avoid the clinical DeFi aesthetic.
 
 **Sorare**
-Sports-first visual identity in a crypto context. Manager dashboard tells a story over time. Onboarding is guided and welcoming for crypto newcomers without dumbing down. Anti-pattern: NFT price speculation as primary UX driver — not relevant to WorldCup2's prediction model.
+Sports-first visual identity in a crypto context. Manager dashboard tells a story over time. Onboarding is guided and welcoming for crypto newcomers without dumbing down. Anti-pattern: NFT price speculation as primary UX driver — not relevant to DegenDraft's prediction model.
 
 **RainbowKit / Uniswap**
-Best-in-class wallet connection UX (already integrated via RainbowKit). Transaction confirmation flows are clear; fee display is honest and prominent. Anti-pattern: DeFi jargon (slippage, gas estimation as primary language) — translate everything to plain English for WorldCup2.
+Best-in-class wallet connection UX (already integrated via RainbowKit). Transaction confirmation flows are clear; fee display is honest and prominent. Anti-pattern: DeFi jargon (slippage, gas estimation as primary language) — translate everything to plain English for DegenDraft.
 
 ### Transferable UX Patterns
 
@@ -197,7 +197,7 @@ Best-in-class wallet connection UX (already integrated via RainbowKit). Transact
 - RainbowKit wallet connection (already decided in architecture)
 - Uniswap-style pre-signature fee breakdown display
 
-**Adapt for WorldCup2:**
+**Adapt for DegenDraft:**
 - Sorare onboarding guidance → simplify for prediction context (no NFT/card mechanics to explain)
 - Polymarket market card → league card (replace probability % with pool size, entry count, time to lock)
 - Fantasy sports draft interface pacing → prediction form (one group at a time on mobile; DnD grid on desktop)

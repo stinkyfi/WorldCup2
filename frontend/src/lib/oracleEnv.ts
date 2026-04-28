@@ -14,7 +14,7 @@ export type OracleStagingGroup = { groupId: number; rankings: [string, string, s
 export function teamKeyToAddress(teamKey: string): `0x${string}` {
   // Must stay consistent with backend cron's derivation.
   // `viem` keccak256 returns 0x-prefixed hex; we take the last 20 bytes as an address.
-  const h = keccak256(toBytes(`wc2:${teamKey}`));
+  const h = keccak256(toBytes(`dd:${teamKey}`));
   return getAddress(`0x${h.slice(-40)}` as `0x${string}`) as `0x${string}`;
 }
 

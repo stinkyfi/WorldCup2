@@ -5,7 +5,7 @@ import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 const leagueAddressPath = /^\/league\/0x[a-fA-F0-9]{40}\/?$/i;
-const OG_MARKER = "<!--worldcup2-ssr-og-->";
+const OG_MARKER = "<!--degendraft-ssr-og-->";
 
 function escapeHtmlAttr(s: string): string {
   return s
@@ -18,10 +18,10 @@ function escapeHtmlAttr(s: string): string {
 /** Same generic OG as backend `GET /league/:invalid` (kept in sync manually). */
 function genericOgMetaSnippet(publicOrigin: string): string {
   const origin = publicOrigin.replace(/\/$/, "");
-  const title = escapeHtmlAttr("WorldCup2");
+  const title = escapeHtmlAttr("DegenDraft");
   const description = escapeHtmlAttr("Browse on-chain World Cup prediction leagues.");
   const url = escapeHtmlAttr(`${origin}/`);
-  const image = escapeHtmlAttr(`${origin}/worldcup2-og-card.svg`);
+  const image = escapeHtmlAttr(`${origin}/degendraft-og-card.svg`);
   return [
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="${title}" />`,
@@ -125,7 +125,7 @@ export default defineConfig({
             console.error("[league-og-html-proxy] local index.html fallback failed", err);
             sendHtml(
               503,
-              "WorldCup2: league preview HTML could not be loaded (API unreachable). Start the backend or set VITE_LEAGUE_OG_API_ORIGIN.",
+              "DegenDraft: league preview HTML could not be loaded (API unreachable). Start the backend or set VITE_LEAGUE_OG_API_ORIGIN.",
               "text/plain; charset=utf-8",
             );
           }

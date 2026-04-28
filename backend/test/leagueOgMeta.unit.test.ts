@@ -84,10 +84,10 @@ test("buildOgMetaSnippet truncates long title and description before escape", ()
 });
 
 test("injectOgIntoIndexHtml replaces marker when present", () => {
-  const html = "<head>\n    <!--worldcup2-ssr-og-->\n  </head>";
+  const html = "<head>\n    <!--degendraft-ssr-og-->\n  </head>";
   const out = injectOgIntoIndexHtml(html, '<meta property="og:title" content="Hi" />');
   assert.ok(out.includes('property="og:title"'));
-  assert.ok(!out.includes("<!--worldcup2-ssr-og-->"));
+  assert.ok(!out.includes("<!--degendraft-ssr-og-->"));
 });
 
 test("checksummedLeaguePathAddress returns null for bad input", () => {

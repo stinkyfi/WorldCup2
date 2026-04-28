@@ -4,7 +4,7 @@ status: 'complete'
 completedAt: '2026-04-26'
 inputDocuments: ['_bmad-output/planning-artifacts/prd.md']
 workflowType: 'architecture'
-project_name: 'WorldCup2'
+project_name: 'DegenDraft'
 user_name: 'Stinky'
 date: '2026-04-26'
 ---
@@ -55,10 +55,10 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 ### Project Structure — Multi-Repo Monorepo
 
-WorldCup2 has three distinct sub-projects. Recommended layout:
+DegenDraft has three distinct sub-projects. Recommended layout:
 
 ```
-WorldCup2/
+DegenDraft/
 ├── contracts/        # Hardhat — Solidity smart contracts
 ├── backend/          # Node.js + TypeScript — indexer, oracle cron, REST API
 └── frontend/         # Vite + React + TypeScript — player/creator/admin UI
@@ -236,7 +236,7 @@ All AI agents implementing stories **MUST**:
 ### Complete Project Directory Structure
 
 ```
-WorldCup2/
+DegenDraft/
 ├── README.md
 ├── docker-compose.yml              # Postgres container for local dev + IT reference
 ├── .gitignore

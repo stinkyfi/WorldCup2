@@ -11,7 +11,7 @@ test("GET /league/:invalid returns HTML with generic Open Graph tags", async () 
   assert.ok(res.payload.includes('property="og:description"'));
   assert.ok(res.payload.includes('property="og:url"'));
   assert.ok(res.payload.includes('property="og:image"'));
-  assert.ok(res.payload.includes("WorldCup2"));
+  assert.ok(res.payload.includes("DegenDraft"));
   await app.close();
 });
 
@@ -23,6 +23,6 @@ test("GET /league/:validFormatMissingLeague returns HTML with generic OG", async
   });
   assert.equal(res.statusCode, 200);
   assert.ok(res.payload.includes('property="og:title"'));
-  assert.ok(res.payload.includes("WorldCup2"));
+  assert.ok(res.payload.includes("DegenDraft"));
   await app.close();
 });

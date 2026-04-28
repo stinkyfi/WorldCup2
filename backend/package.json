@@ -1,5 +1,5 @@
 {
-  "name": "worldcup2-backend",
+  "name": "degendraft-backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,8 @@
     "oracle:primary": "tsx src/cron/primaryOracle.ts",
     "oracle:redundant": "tsx src/cron/redundantOracle.ts",
     "alerts:telegram": "tsx src/cron/telegramAlerts.ts",
-    "indexer:results": "tsx src/indexer/resultsPostedListener.ts"
+    "indexer:results": "tsx src/indexer/resultsPostedListener.ts",
+    "indexer:merkle": "tsx src/cron/runMerkleIndexer.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
@@ -25,6 +26,8 @@
     "@prisma/client": "^6.7.0",
     "dotenv": "^16.5.0",
     "fastify": "^5.2.2",
+    "keccak256": "^1.0.6",
+    "merkletreejs": "^0.6.0",
     "siwe": "^3.0.0",
     "viem": "^2.48.4",
     "zod": "^3.24.4"

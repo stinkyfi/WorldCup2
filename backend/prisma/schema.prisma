@@ -1,4 +1,4 @@
-// WorldCup2 — single schema for all chains + domains (architecture)
+// DegenDraft — single schema for all chains + domains (architecture)
 generator client {
   provider = "prisma-client-js"
 }
@@ -207,4 +207,23 @@ model AlertError {
 
   @@index([chainId, createdAt], map: "idx_alert_errors_chain_time")
   @@map("alert_errors")
+}
+
+/// Story 8.1 — Merkle payout leaf + proof for claims UI / API (written after root is posted).
+model MerkleClaim {
+  id               String   @id @default(cuid())
+  chainId          Int      @map("chain_id")
+  leagueAddress    String   @map("league_address")
+  claimantAddress  String   @map("claimant_address")
+  amountWei        BigInt   @map("amount_wei")
+  claimType        Int      @map("claim_type") // 0 = prize, 1 = fee (matches League.sol)
+  proofJson        Json     @map("proof_json")
+  leafHex          String   @map("leaf_hex")
+  merkleRootHex    String   @map("merkle_root_hex")
+  txHash           String?  @map("tx_hash")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@unique([chainId, leagueAddress, claimantAddress, claimType], map: "uniq_merkle_claim_league_wallet_claim_type")
+  @@index([chainId, leagueAddress], map: "idx_merkle_claims_chain_league")
+  @@map("merkle_claims")
 }

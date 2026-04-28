@@ -20,7 +20,7 @@ So that API and indexer development can begin with consistent tooling and a work
 
 ## Tasks / Subtasks
 
-- [x] Root `docker-compose.yml` — Postgres 16, user/db `worldcup2`, port 5432
+- [x] Root `docker-compose.yml` — Postgres 16, user/db `degendraft`, port 5432
 - [x] `backend/package.json` — Fastify 5, Prisma 6, Zod, CORS, rate-limit, `dev` / `build` / `lint` / `test`
 - [x] `backend/prisma/schema.prisma` + initial migration (`leagues` minimal table)
 - [x] `backend/src` — config, Prisma singleton, `createApp`, `/api/v1/health`, `/api/v1/leagues` GET+POST

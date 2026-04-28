@@ -25,7 +25,7 @@ function findRepoRootSoft(): string | null {
 
 function defaultOgImageUrl(): string {
   const base = config.publicAppOrigin.replace(/\/$/, "");
-  return `${base}/worldcup2-og-card.svg`;
+  return `${base}/degendraft-og-card.svg`;
 }
 
 const FALLBACK_HTML = `<!doctype html>
@@ -33,12 +33,12 @@ const FALLBACK_HTML = `<!doctype html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WorldCup2</title>
-    <!--worldcup2-ssr-og-->
+    <title>DegenDraft</title>
+    <!--degendraft-ssr-og-->
   </head>
   <body>
     <div id="root"></div>
-    <p>WorldCup2</p>
+    <p>DegenDraft</p>
   </body>
 </html>
 `;
@@ -78,7 +78,7 @@ export const leagueOgHtmlPlugin: FastifyPluginAsync = async (fastify) => {
     if (!checksummed) {
       const canonicalUrl = `${origin}/`;
       const snippet = buildOgMetaSnippet({
-        title: "WorldCup2",
+        title: "DegenDraft",
         description: "Browse on-chain World Cup prediction leagues.",
         canonicalUrl,
         imageUrl,
@@ -94,8 +94,8 @@ export const leagueOgHtmlPlugin: FastifyPluginAsync = async (fastify) => {
 
     if (!row) {
       const snippet = buildOgMetaSnippet({
-        title: "WorldCup2",
-        description: "League not found. Browse live leagues on WorldCup2.",
+        title: "DegenDraft",
+        description: "League not found. Browse live leagues on DegenDraft.",
         canonicalUrl,
         imageUrl,
       });

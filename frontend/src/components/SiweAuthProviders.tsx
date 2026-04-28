@@ -112,7 +112,7 @@ function SiweRainbowKitInner({ children }: { children: ReactNode }) {
           return new SiweMessage({
             domain: host,
             address: msgAddress,
-            statement: "Sign in with Ethereum to WorldCup2.",
+            statement: "Sign in with Ethereum to DegenDraft.",
             uri: origin,
             version: "1",
             chainId,
@@ -162,7 +162,7 @@ function SiweRainbowKitInner({ children }: { children: ReactNode }) {
           <RainbowKitProvider
             theme={broadcastTheme}
             appInfo={{
-              appName: "WorldCup2",
+              appName: "DegenDraft",
               disclaimer: GetWalletDisclaimer,
             }}
           >

@@ -1,7 +1,7 @@
 import type { League } from "@prisma/client";
 import { getAddress } from "viem";
 
-const OG_MARKER = "<!--worldcup2-ssr-og-->";
+const OG_MARKER = "<!--degendraft-ssr-og-->";
 
 /** Max grapheme-ish units for Open Graph / Twitter card fields (after truncation, before HTML escape). */
 export const OG_TITLE_MAX_LEN = 70;
@@ -59,7 +59,7 @@ export function buildOgMetaSnippet(input: {
   imageUrl: string;
   siteName?: string;
 }): string {
-  const site = input.siteName ?? "WorldCup2";
+  const site = input.siteName ?? "DegenDraft";
   const title = escapeHtml(truncateOgField(input.title, OG_TITLE_MAX_LEN));
   const description = escapeHtml(truncateOgField(input.description, OG_DESCRIPTION_MAX_LEN));
   const url = escapeHtml(input.canonicalUrl);
