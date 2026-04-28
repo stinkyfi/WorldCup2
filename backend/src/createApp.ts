@@ -1,6 +1,8 @@
+import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
+import { config } from "./config.js";
 import { ZodError } from "zod";
 import { AppError } from "./appError.js";
 import { prisma } from "./db.js";
@@ -14,7 +16,17 @@ export async function createApp() {
     },
   });
 
-  await fastify.register(cors, { origin: true });
+  await fastify.register(cookie);
+  await fastify.register(cors, {
+    credentials: true,
+    origin(origin, cb) {
+      if (!origin) {
+        cb(null, true);
+        return;
+      }
+      cb(null, config.corsOrigins.includes(origin));
+    },
+  });
   await fastify.register(rateLimit, {
     max: 200,
     timeWindow: "1 minute",

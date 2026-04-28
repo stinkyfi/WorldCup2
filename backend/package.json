@@ -15,11 +15,14 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^10.0.2",
     "@fastify/rate-limit": "^10.2.2",
     "@prisma/client": "^6.7.0",
     "dotenv": "^16.5.0",
     "fastify": "^5.2.2",
+    "siwe": "^3.0.0",
+    "viem": "^2.48.4",
     "zod": "^3.24.4"
   },
   "devDependencies": {

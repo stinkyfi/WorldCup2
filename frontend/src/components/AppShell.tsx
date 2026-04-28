@@ -3,6 +3,9 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Menu, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { useAccount } from "wagmi";
+import { IdentityDisplay } from "@/components/IdentityDisplay";
+import { useSiweAuthUi, useSiweSession } from "@/lib/siweAuthContext";
 import { Button } from "@/components/ui/button";
 import { useNavDrawer } from "@/stores/navDrawerStore";
 import { cn } from "@/lib/utils";
@@ -22,9 +25,23 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
 export function AppShell({ children }: { children: ReactNode }) {
   const open = useNavDrawer((s) => s.open);
   const setOpen = useNavDrawer((s) => s.setOpen);
+  const { address } = useAccount();
+  const { authStatus } = useSiweSession();
+  const { siweError, clearSiweError } = useSiweAuthUi();
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+      {siweError ? (
+        <div
+          className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-center text-sm text-destructive"
+          role="alert"
+        >
+          <span>{siweError}</span>{" "}
+          <button type="button" className="underline underline-offset-2" onClick={() => clearSiweError()}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur supports-backdrop-filter:bg-surface/80">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Link
@@ -46,7 +63,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex min-w-0 items-center gap-2">
+            {authStatus === "authenticated" && address ? (
+              <IdentityDisplay address={address} className="hidden sm:flex" />
+            ) : null}
             <ConnectButton chainStatus="icon" showBalance={{ smallScreen: false, largeScreen: true }} />
             <Dialog.Root open={open} onOpenChange={setOpen}>
               <Dialog.Trigger asChild>
