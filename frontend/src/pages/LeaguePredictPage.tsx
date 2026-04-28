@@ -7,22 +7,29 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { getAddress } from "viem";
-import { useAccount } from "wagmi";
+import { type Address, getAddress } from "viem";
+import { waitForTransactionReceipt } from "wagmi/actions";
+import { useAccount, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PolymarketOddsWidget } from "@/components/PolymarketOddsWidget";
 import { PredictionProgressBar } from "@/components/PredictionProgressBar";
 import {
   createEntryId,
+  getEntryIndexFromStorage,
   migrateLegacyV1IfPresent,
   savePredictionToStorage,
   type PredictionPayloadV2,
 } from "@/lib/predictionCommitment";
+import { erc20Abi } from "@/lib/erc20Abi";
+import { leagueAbi } from "@/lib/leagueAbi";
+import { fetchLeagueDetail } from "@/lib/leagueDetail";
 import { WORLD_CUP_GROUPS, type WorldCupGroupId } from "@/lib/worldCupGroups";
 import { cn } from "@/lib/utils";
+import { wagmiConfig } from "@/wagmi";
 
 function isAddress(s: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(s);
@@ -68,7 +75,9 @@ export function LeaguePredictPage() {
   const [search] = useSearchParams();
   const entryIdFromUrl = search.get("entryId");
   const isValidAddress = useMemo(() => isAddress(address), [address]);
-  const { address: walletAddress } = useAccount();
+  const { address: walletAddress, isConnected } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const { writeContractAsync } = useWriteContract();
 
   const [orderByGroup, setOrderByGroup] = useState<GroupOrderState>(() => initState());
   const [tiebreaker, setTiebreaker] = useState<string>("");
@@ -76,6 +85,60 @@ export function LeaguePredictPage() {
   const [confirmedGroups, setConfirmedGroups] = useState<Set<WorldCupGroupId>>(() => new Set());
   const [submitCommitment, setSubmitCommitment] = useState<`0x${string}` | null>(null);
   const [entryId] = useState<string>(() => entryIdFromUrl ?? createEntryId());
+  const [reviseBusy, setReviseBusy] = useState<null | "approving" | "revising">(null);
+  const [reviseError, setReviseError] = useState<string | null>(null);
+  const [reviseSuccess, setReviseSuccess] = useState(false);
+
+  const validAddress = isValidAddress ? address : null;
+  const leagueQuery = useQuery({
+    queryKey: ["league-detail", validAddress],
+    queryFn: ({ signal }) => fetchLeagueDetail(validAddress!, signal),
+    enabled: Boolean(validAddress),
+    staleTime: 20_000,
+    retry: 1,
+  });
+  const league = leagueQuery.data?.data.league;
+  const leagueChainId = league?.chainId as 1 | 146 | 8453 | 84532 | undefined;
+  const leagueAddr = isValidAddress ? (getAddress(address) as Address) : undefined;
+  const tokenAddr = league?.entryTokenAddress ? (getAddress(league.entryTokenAddress) as Address) : undefined;
+
+  const entryIndex =
+    isValidAddress && walletAddress ? getEntryIndexFromStorage({ leagueAddress: address, walletAddress, entryId }) : null;
+
+  const { data: revisionPolicy } = useReadContract({
+    address: leagueAddr,
+    abi: leagueAbi,
+    functionName: "revisionPolicy",
+    chainId: leagueChainId,
+    query: { enabled: Boolean(leagueAddr && leagueChainId) },
+  });
+  const { data: revisionFee } = useReadContract({
+    address: leagueAddr,
+    abi: leagueAbi,
+    functionName: "revisionFee",
+    chainId: leagueChainId,
+    query: { enabled: Boolean(leagueAddr && leagueChainId) },
+  });
+
+  const paidRevisions = typeof revisionPolicy !== "undefined" ? Number(revisionPolicy) === 2 : false;
+
+  const { data: revisionAllowance } = useReadContract({
+    address: tokenAddr,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: walletAddress && leagueAddr ? [walletAddress, leagueAddr] : undefined,
+    chainId: leagueChainId,
+    query: {
+      enabled: Boolean(isConnected && paidRevisions && walletAddress && tokenAddr && leagueAddr && leagueChainId),
+      staleTime: 5_000,
+    },
+  });
+
+  const revisionAllowanceEnough =
+    paidRevisions &&
+    typeof revisionAllowance !== "undefined" &&
+    typeof revisionFee !== "undefined" &&
+    revisionAllowance >= revisionFee;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -141,6 +204,81 @@ export function LeaguePredictPage() {
     migrateLegacyV1IfPresent(leagueAddress, walletAddress);
     const commitment = savePredictionToStorage(payload);
     setSubmitCommitment(commitment);
+    setReviseSuccess(false);
+    setReviseError(null);
+  }
+
+  async function ensureChain() {
+    if (!leagueChainId) return;
+    await switchChainAsync({ chainId: leagueChainId });
+  }
+
+  async function onReviseOnchain() {
+    setReviseError(null);
+    setReviseSuccess(false);
+    if (!submitCommitment) return;
+    if (!isConnected || !walletAddress) {
+      setReviseError("Connect a wallet to revise.");
+      return;
+    }
+    if (!leagueChainId || !leagueAddr || !tokenAddr) {
+      setReviseError("League is missing chain or contract details.");
+      return;
+    }
+    if (entryIndex === null) {
+      setReviseError("Enter the league first (this entry slot has no on-chain index yet).");
+      return;
+    }
+    if (typeof revisionPolicy === "undefined") {
+      setReviseError("Could not read revision policy.");
+      return;
+    }
+    if (Number(revisionPolicy) === 0) {
+      setReviseError("This league does not allow prediction revisions.");
+      return;
+    }
+    try {
+      await ensureChain();
+
+      if (paidRevisions) {
+        if (typeof revisionFee === "undefined") {
+          setReviseError("Could not read revision fee.");
+          return;
+        }
+        if (!revisionAllowanceEnough) {
+          setReviseBusy("approving");
+          const approveHash = await writeContractAsync({
+            address: tokenAddr,
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [leagueAddr, revisionFee],
+            chainId: leagueChainId,
+          });
+          await waitForTransactionReceipt(wagmiConfig, { hash: approveHash, chainId: leagueChainId });
+        }
+      }
+
+      setReviseBusy("revising");
+      const reviseHash = await writeContractAsync({
+        address: leagueAddr,
+        abi: leagueAbi,
+        functionName: "revise",
+        args: [BigInt(entryIndex), submitCommitment],
+        chainId: leagueChainId,
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash: reviseHash, chainId: leagueChainId });
+      setReviseSuccess(true);
+    } catch (e) {
+      const m = (e as Error | null | undefined)?.message ?? "";
+      if (m.includes("LeagueLocked")) setReviseError("League is locked. Revisions are closed.");
+      else if (m.includes("RevisionsLocked")) setReviseError("This league does not allow revisions.");
+      else if (m.includes("InvalidEntryIndex")) setReviseError("Invalid entry index for this wallet.");
+      else if (m.toLowerCase().includes("user rejected") || m.toLowerCase().includes("rejected"))
+        setReviseError("Transaction rejected in wallet.");
+      else setReviseError("Revision failed. Please try again.");
+    } finally {
+      setReviseBusy(null);
+    }
   }
 
   return (
@@ -304,7 +442,28 @@ export function LeaguePredictPage() {
               <Button type="button" className="min-h-11" asChild>
                 <Link to={`/league/${address}/enter?entryId=${encodeURIComponent(entryId)}`}>Continue to entry</Link>
               </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-11"
+                disabled={entryIndex === null || reviseBusy !== null || !submitCommitment}
+                onClick={() => void onReviseOnchain()}
+                title={entryIndex === null ? "Enter the league first to get an on-chain entry index." : undefined}
+              >
+                {reviseBusy === "approving"
+                  ? "Approving…"
+                  : reviseBusy === "revising"
+                    ? "Revising…"
+                    : "Update on-chain (revise)"}
+              </Button>
             </div>
+            {reviseSuccess ? <p className="mt-3 text-sm text-foreground">On-chain commitment updated for this entry.</p> : null}
+            {reviseError ? <p className="mt-3 text-sm text-destructive">{reviseError}</p> : null}
+            {entryIndex === null ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Tip: after you enter successfully, come back here (same `entryId`) to revise on-chain.
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

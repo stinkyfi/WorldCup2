@@ -66,6 +66,7 @@ contract League is ReentrancyGuard {
     address[] private _entrantsList;
     mapping(address => uint256) private _walletEntryCount;
     mapping(address => bool) private _refundClaimed;
+    mapping(address => bytes32[]) private _commitments;
 
     // ─── Merkle claim ────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ contract League is ReentrancyGuard {
     // ─── Events ──────────────────────────────────────────────────────────────
 
     event EntrySubmitted(address indexed player, bytes32 commitmentHash);
+    event EntryRevised(address indexed player, uint256 indexed entryIndex, bytes32 commitmentHash, uint256 feePaid);
     event LeagueRefunding();
     event MerkleRootSet(bytes32 indexed root);
     event PrizeClaimed(address indexed player, uint256 amount);
@@ -100,6 +102,8 @@ contract League is ReentrancyGuard {
     error NotAuthorized();
     error InvalidAddress();
     error InvalidParams();
+    error RevisionsLocked();
+    error InvalidEntryIndex();
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -149,7 +153,37 @@ contract League is ReentrancyGuard {
         totalEntries++;
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), entryFee);
+        _commitments[msg.sender].push(commitmentHash);
         emit EntrySubmitted(msg.sender, commitmentHash);
+    }
+
+    /// @notice Revise an existing entry's commitment hash when revision policy allows.
+    /// @param entryIndex The zero-based entry index for the sender wallet.
+    /// @param newCommitmentHash New keccak256 commitment of the revised predictions.
+    function revise(uint256 entryIndex, bytes32 newCommitmentHash) external nonReentrant {
+        if (block.timestamp >= lockTime) revert LeagueLocked();
+        if (revisionPolicy == RevisionPolicy.Locked) revert RevisionsLocked();
+        if (entryIndex >= _walletEntryCount[msg.sender]) revert InvalidEntryIndex();
+
+        uint256 feePaid = 0;
+        if (revisionPolicy == RevisionPolicy.Paid) {
+            feePaid = revisionFee;
+            IERC20(token).safeTransferFrom(msg.sender, address(this), revisionFee);
+        }
+
+        _commitments[msg.sender][entryIndex] = newCommitmentHash;
+        emit EntryRevised(msg.sender, entryIndex, newCommitmentHash, feePaid);
+    }
+
+    /// @notice Read how many entries a wallet has in this league.
+    function walletEntryCount(address wallet) external view returns (uint256) {
+        return _walletEntryCount[wallet];
+    }
+
+    /// @notice Read a commitment hash for a wallet entry index.
+    function commitmentOf(address wallet, uint256 entryIndex) external view returns (bytes32) {
+        if (entryIndex >= _walletEntryCount[wallet]) revert InvalidEntryIndex();
+        return _commitments[wallet][entryIndex];
     }
 
     // ─── Threshold check & refund ─────────────────────────────────────────────

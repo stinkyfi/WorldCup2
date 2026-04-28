@@ -12,7 +12,12 @@ import { erc20Abi } from "@/lib/erc20Abi";
 import { leagueAbi } from "@/lib/leagueAbi";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
 import { fetchComplianceStatus, HttpError, postComplianceAck } from "@/lib/leagueCompliance";
-import { computePredictionCommitment, loadPredictionFromStorage, migrateLegacyV1IfPresent } from "@/lib/predictionCommitment";
+import {
+  computePredictionCommitment,
+  loadPredictionFromStorage,
+  migrateLegacyV1IfPresent,
+  setEntryIndexInStorage,
+} from "@/lib/predictionCommitment";
 import { wagmiConfig } from "@/wagmi";
 
 function isAddress(s: string): boolean {
@@ -89,6 +94,18 @@ export function LeagueEntryPage() {
     query: {
       enabled: Boolean(isConnected && walletAddress && tokenAddr && leagueAddr && leagueChainId),
       refetchInterval: 15_000,
+    },
+  });
+
+  const { data: walletEntryCountBefore } = useReadContract({
+    address: leagueAddr,
+    abi: leagueAbi,
+    functionName: "walletEntryCount",
+    args: walletAddress ? [walletAddress] : undefined,
+    chainId: leagueChainId,
+    query: {
+      enabled: Boolean(isConnected && walletAddress && leagueAddr && leagueChainId),
+      staleTime: 5_000,
     },
   });
 
@@ -218,6 +235,14 @@ export function LeagueEntryPage() {
         chainId: leagueChainId,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: enterHash, chainId: leagueChainId });
+
+      if (entryId && typeof walletEntryCountBefore !== "undefined") {
+        const idx = Number(walletEntryCountBefore) /* before tx */; // next index equals previous count
+        if (Number.isFinite(idx) && idx >= 0) {
+          setEntryIndexInStorage({ leagueAddress: address, walletAddress, entryId, entryIndex: idx });
+        }
+      }
+
       setEntrySuccess({ commitmentHash });
     } catch (e) {
       const m = (e as Error | null | undefined)?.message ?? "";

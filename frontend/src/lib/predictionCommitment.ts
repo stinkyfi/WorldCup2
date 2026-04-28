@@ -47,22 +47,65 @@ export type StoredPredictionsV2 = {
   leagueAddress: `0x${string}`;
   walletAddress: `0x${string}`;
   // newest first
-  entries: Array<{ entryId: string; payload: PredictionPayloadV2; commitment: `0x${string}`; savedAt: string }>;
+  entries: Array<{
+    entryId: string;
+    payload: PredictionPayloadV2;
+    commitment: `0x${string}`;
+    savedAt: string;
+    // Optional on-chain index, set after a successful enter() tx.
+    entryIndex?: number;
+  }>;
 };
 
 export function savePredictionToStorage(payload: PredictionPayloadV2): `0x${string}` {
   const key = predictionStorageKeyV2(payload.leagueAddress, payload.walletAddress);
   const commitment = computePredictionCommitment(payload);
   const existing = loadAllPredictionsFromStorage(payload.leagueAddress, payload.walletAddress);
+  const prev = existing.entries.find((e) => e.entryId === payload.entryId);
   const filtered = existing.entries.filter((e) => e.entryId !== payload.entryId);
   const next: StoredPredictionsV2 = {
     version: 2,
     leagueAddress: payload.leagueAddress,
     walletAddress: payload.walletAddress,
-    entries: [{ entryId: payload.entryId, payload, commitment, savedAt: new Date().toISOString() }, ...filtered],
+    entries: [
+      {
+        entryId: payload.entryId,
+        payload,
+        commitment,
+        savedAt: new Date().toISOString(),
+        entryIndex: prev?.entryIndex,
+      },
+      ...filtered,
+    ],
   };
   window.localStorage.setItem(key, stableJsonStringify(next));
   return commitment;
+}
+
+export function setEntryIndexInStorage(params: {
+  leagueAddress: string;
+  walletAddress: string;
+  entryId: string;
+  entryIndex: number;
+}): void {
+  const { leagueAddress, walletAddress, entryId, entryIndex } = params;
+  const key = predictionStorageKeyV2(leagueAddress, walletAddress);
+  const existing = loadAllPredictionsFromStorage(leagueAddress, walletAddress);
+  const nextEntries = existing.entries.map((e) => (e.entryId === entryId ? { ...e, entryIndex } : e));
+  const next: StoredPredictionsV2 = { ...existing, entries: nextEntries };
+  window.localStorage.setItem(key, stableJsonStringify(next));
+}
+
+export function getEntryIndexFromStorage(params: {
+  leagueAddress: string;
+  walletAddress: string;
+  entryId: string;
+}): number | null {
+  const { leagueAddress, walletAddress, entryId } = params;
+  const existing = loadAllPredictionsFromStorage(leagueAddress, walletAddress);
+  const e = existing.entries.find((x) => x.entryId === entryId);
+  const idx = e?.entryIndex;
+  return Number.isFinite(idx) ? (idx as number) : null;
 }
 
 export function loadAllPredictionsFromStorage(leagueAddress: string, walletAddress: string): StoredPredictionsV2 {
