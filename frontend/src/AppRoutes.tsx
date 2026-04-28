@@ -5,7 +5,7 @@ import { RequireSiwe } from "@/components/RequireSiwe";
 import { AdminPlaceholderPage } from "@/pages/AdminPlaceholderPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { BrowsePage } from "@/pages/BrowsePage";
-import { CreatePlaceholderPage } from "@/pages/CreatePlaceholderPage";
+import { CreateLeagueWizardPage } from "@/pages/CreateLeagueWizardPage";
 import { LeagueDetailPage } from "@/pages/LeagueDetailPage";
 import { MyLeaguesPlaceholderPage } from "@/pages/MyLeaguesPlaceholderPage";
 
@@ -20,7 +20,7 @@ export function AppRoutes() {
           path="/create"
           element={
             <RequireSiwe>
-              <CreatePlaceholderPage />
+              <CreateLeagueWizardPage />
             </RequireSiwe>
           }
         />

@@ -72,3 +72,17 @@ model Admin {
   @@unique([address, chainId], map: "uniq_admins_address_chain")
   @@map("admins")
 }
+
+/// ERC-20 tokens approved for league entry on a chain (Story 3.1); mirrors platform / indexer view of WhitelistRegistry.
+model WhitelistedToken {
+  id         String @id @default(cuid())
+  chainId    Int    @map("chain_id")
+  address    String
+  symbol     String
+  decimals   Int
+  sortOrder  Int    @default(0) @map("sort_order")
+
+  @@unique([chainId, address], map: "uniq_whitelisted_tokens_chain_address")
+  @@index([chainId], map: "idx_whitelisted_tokens_chain_id")
+  @@map("whitelisted_tokens")
+}

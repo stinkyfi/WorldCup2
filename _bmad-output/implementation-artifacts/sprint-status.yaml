@@ -57,7 +57,7 @@ development_status:
   1-8-backend-repo-init-and-config: done
   1-9-frontend-repo-init-and-design-system: done
   1-10-github-actions-cicd: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # ─────────────────────────────────────────────────────────────
   # Epic 2: Wallet, Auth & Public Browse
@@ -70,13 +70,13 @@ development_status:
   2-5-league-detail-page-and-fee-breakdown: done
   2-6-og-share-meta-tags: done
   2-7-get-a-wallet-helper: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   # ─────────────────────────────────────────────────────────────
   # Epic 3: League Creation & Creator Dashboard
   # ─────────────────────────────────────────────────────────────
-  epic-3: backlog
-  3-1-league-creation-wizard-chain-token-and-fee-limits: backlog
+  epic-3: in-progress
+  3-1-league-creation-wizard-chain-token-and-fee-limits: done
   3-2-league-creation-wizard-revision-policy-promotion-review-and-on-chain-tx: backlog
   3-3-minimum-player-threshold-and-refund: backlog
   3-4-creator-dashboard: backlog

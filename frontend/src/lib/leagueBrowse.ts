@@ -25,6 +25,7 @@ export type LeagueBrowseResponse = {
 /** Chains we label in the UI; unknown IDs fall back to "Chain {id}". */
 export const CHAIN_LABELS: Record<number, string> = {
   1: "Ethereum",
+  146: "Sonic",
   8453: "Base",
   84532: "Base Sepolia",
 };
