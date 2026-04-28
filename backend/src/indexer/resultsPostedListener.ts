@@ -96,6 +96,71 @@ export async function runResultsPostedIndexerOnce(params?: { chainId?: number })
         });
       }
 
+      // Recompute leaderboard rows for all leagues in this chain (simple + safe; optimize later if needed).
+      const leagueAddresses = Array.from(new Set(entries.map((e) => e.leagueAddress)));
+      for (const leagueAddress of leagueAddresses) {
+        const leagueEntries = entries.filter((e) => e.leagueAddress === leagueAddress);
+        if (leagueEntries.length === 0) continue;
+
+        const totals = await Promise.all(
+          leagueEntries.map(async (e) => {
+            const sum = await prisma.score.aggregate({
+              where: {
+                chainId,
+                leagueAddress,
+                walletAddress: e.walletAddress,
+                entryIndex: e.entryIndex,
+              },
+              _sum: { points: true },
+            });
+            return { ...e, totalPoints: Number(sum._sum.points ?? 0) };
+          }),
+        );
+
+        totals.sort((a, b) => b.totalPoints - a.totalPoints || a.walletAddress.localeCompare(b.walletAddress) || a.entryIndex - b.entryIndex);
+
+        for (let i = 0; i < totals.length; i++) {
+          const t = totals[i]!;
+          const newRank = i + 1;
+          const existing = await prisma.leaderboardRow.findUnique({
+            where: {
+              chainId_leagueAddress_walletAddress_entryIndex: {
+                chainId,
+                leagueAddress,
+                walletAddress: t.walletAddress,
+                entryIndex: t.entryIndex,
+              },
+            },
+            select: { rank: true },
+          });
+
+          await prisma.leaderboardRow.upsert({
+            where: {
+              chainId_leagueAddress_walletAddress_entryIndex: {
+                chainId,
+                leagueAddress,
+                walletAddress: t.walletAddress,
+                entryIndex: t.entryIndex,
+              },
+            },
+            create: {
+              chainId,
+              leagueAddress,
+              walletAddress: t.walletAddress,
+              entryIndex: t.entryIndex,
+              totalPoints: t.totalPoints,
+              rank: newRank,
+              prevRank: existing?.rank ?? null,
+            },
+            update: {
+              totalPoints: t.totalPoints,
+              rank: newRank,
+              prevRank: existing?.rank ?? null,
+            },
+          });
+        }
+      }
+
       // Best-effort: update per-league freshness timestamp.
       await prisma.league
         .updateMany({

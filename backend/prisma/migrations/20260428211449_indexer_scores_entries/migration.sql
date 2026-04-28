@@ -1,6 +1,5 @@
 -- AlterTable
-ALTER TABLE "leagues" ADD COLUMN     "last_calculated_at" TIMESTAMP(3),
-ALTER COLUMN "lock_at" DROP DEFAULT;
+ALTER TABLE "leagues" ADD COLUMN     "last_calculated_at" TIMESTAMP(3);
 
 -- CreateTable
 CREATE TABLE "entries" (

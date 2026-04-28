@@ -320,6 +320,9 @@ export function LeagueDetailPage() {
                     {refundBusy === "checking" ? "Checking threshold…" : "Check threshold"}
                   </Button>
                 ) : null}
+                <Button type="button" variant="secondary" className="min-h-11" asChild>
+                  <Link to={`/league/${address}/leaderboard`}>Leaderboard</Link>
+                </Button>
                 <Button
                   type="button"
                   className="min-h-11"

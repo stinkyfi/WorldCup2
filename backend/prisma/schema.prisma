@@ -26,7 +26,8 @@ model League {
   poolWei           BigInt    @default(0) @map("pool_wei")
   entryCount        Int       @default(0) @map("entry_count")
   maxEntries        Int       @default(1000) @map("max_entries")
-  lockAt            DateTime  @map("lock_at")
+  // DB default is intentionally set for dev convenience; indexer/backfill will overwrite.
+  lockAt            DateTime  @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '30 days')")) @map("lock_at")
   featured          Boolean   @default(false)
   promotedUntil     DateTime? @map("promoted_until")
   lastCalculatedAt  DateTime? @map("last_calculated_at")
@@ -74,6 +75,23 @@ model Score {
   @@index([chainId, leagueAddress], map: "idx_scores_chain_league")
   @@index([walletAddress], map: "idx_scores_wallet")
   @@map("scores")
+}
+
+/// Current leaderboard row; updated only by indexer on ResultsPosted.
+model LeaderboardRow {
+  id           String   @id @default(cuid())
+  chainId      Int      @map("chain_id")
+  leagueAddress String  @map("league_address")
+  walletAddress String  @map("wallet_address")
+  entryIndex   Int      @map("entry_index")
+  totalPoints  Int      @default(0) @map("total_points")
+  rank         Int      @default(0) @map("rank")
+  prevRank     Int?     @map("prev_rank")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([chainId, leagueAddress, walletAddress, entryIndex], map: "uniq_leaderboard_row_entry")
+  @@index([chainId, leagueAddress, rank], map: "idx_leaderboard_chain_league_rank")
+  @@map("leaderboard_rows")
 }
 
 /// Per-chain cursor for event replay / crash recovery.
