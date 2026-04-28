@@ -322,6 +322,11 @@ export function LeagueEntryPage() {
               <p className="mt-1 text-muted-foreground">
                 Commitment hash: <code className="rounded bg-muted px-1">{entrySuccess.commitmentHash}</code>
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" className="min-h-11" asChild>
+                  <Link to={`/league/${address}/predict`}>Make predictions</Link>
+                </Button>
+              </div>
             </div>
           ) : null}
 

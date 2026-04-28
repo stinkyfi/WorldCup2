@@ -9,6 +9,7 @@ import { CreateLeagueWizardPage } from "@/pages/CreateLeagueWizardPage";
 import { LeagueCreatorDashboardPage } from "@/pages/LeagueCreatorDashboardPage";
 import { LeagueDetailPage } from "@/pages/LeagueDetailPage";
 import { LeagueEntryPage } from "@/pages/LeagueEntryPage";
+import { LeaguePredictPage } from "@/pages/LeaguePredictPage";
 import { MyLeaguesPlaceholderPage } from "@/pages/MyLeaguesPlaceholderPage";
 
 export function AppRoutes() {
@@ -23,6 +24,14 @@ export function AppRoutes() {
           element={
             <RequireSiwe>
               <LeagueEntryPage />
+            </RequireSiwe>
+          }
+        />
+        <Route
+          path="/league/:address/predict"
+          element={
+            <RequireSiwe>
+              <LeaguePredictPage />
             </RequireSiwe>
           }
         />
