@@ -11,7 +11,10 @@ export function AdminPlaceholderPage() {
       </p>
       <div className="flex flex-wrap gap-2">
         <Button type="button" className="min-h-11" asChild>
-          <Link to="/admin/oracle">Oracle</Link>
+          <Link to="/admin/oracle">Oracle actions</Link>
+        </Button>
+        <Button type="button" variant="secondary" asChild className="min-h-11">
+          <Link to="/admin/oracle/health">Oracle health</Link>
         </Button>
         <Button type="button" variant="secondary" asChild className="min-h-11">
           <Link to="/">Back to home</Link>
