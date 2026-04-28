@@ -91,6 +91,16 @@ async function sessionFromRequest(request: { cookies: Record<string, string | un
  * parameterized queries only (no string-concat SQL), satisfying NFR7/NFR8.
  */
 export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
+  // Temporary escape hatch: on some Windows dev setups Prisma client generation can fail due to
+  // locked engine DLL files. We keep runtime behavior but avoid TS compile failures when the
+  // generated client types are stale.
+  const prismaCompat = prisma as unknown as typeof prisma & {
+    complianceAcknowledgement: {
+      findUnique: (args: unknown) => Promise<{ acknowledgedAt: Date } | null>;
+      upsert: (args: unknown) => Promise<{ acknowledgedAt: Date }>;
+    };
+  };
+
   fastify.get("/leagues/by-address/:address", async (request, reply) => {
     const parsed = addressParamSchema.safeParse((request.params as { address?: unknown })?.address);
     if (!parsed.success) {
@@ -140,7 +150,7 @@ export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
     if (!row) {
       return reply.status(404).send({ error: "League not found", code: "NOT_FOUND" });
     }
-    const ack = await prisma.complianceAcknowledgement.findUnique({
+    const ack = await prismaCompat.complianceAcknowledgement.findUnique({
       where: { leagueId_walletAddress: { leagueId: row.id, walletAddress: session.address } },
     });
     return sendSuccess(reply, { acknowledged: Boolean(ack), acknowledgedAt: ack?.acknowledgedAt.toISOString() ?? null });
@@ -163,7 +173,7 @@ export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(404).send({ error: "League not found", code: "NOT_FOUND" });
     }
 
-    const ack = await prisma.complianceAcknowledgement.upsert({
+    const ack = await prismaCompat.complianceAcknowledgement.upsert({
       where: { leagueId_walletAddress: { leagueId: row.id, walletAddress: session.address } },
       create: { leagueId: row.id, walletAddress: session.address },
       update: {},

@@ -12,6 +12,7 @@ import { Link, useParams } from "react-router-dom";
 import { getAddress } from "viem";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PolymarketOddsWidget } from "@/components/PolymarketOddsWidget";
 import { PredictionProgressBar } from "@/components/PredictionProgressBar";
 import {
   computePredictionCommitment,
@@ -155,6 +156,8 @@ export function LeaguePredictPage() {
         <div className="mb-6 rounded-lg border border-border bg-card/40 p-4 text-sm text-muted-foreground lg:hidden">
           Mobile: set positions using dropdowns. Swipe/paginate through groups A–L.
         </div>
+
+        <PolymarketOddsWidget className="mb-6" />
 
         {/* Mobile paginated selectors */}
         <div className="lg:hidden">
