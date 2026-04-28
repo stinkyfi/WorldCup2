@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { IdentityDisplay } from "@/components/IdentityDisplay";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
-import { fetchLeaderboard } from "@/lib/leaderboard";
+import { fetchLeaderboard, fetchLeaderboardBreakdown } from "@/lib/leaderboard";
 
 function isAddress(s: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(s);
@@ -18,6 +18,7 @@ function formatDelta(delta: number): string {
 export function LeagueLeaderboardPage() {
   const { address = "" } = useParams();
   const valid = useMemo(() => (isAddress(address) ? address : null), [address]);
+  const [expanded, setExpanded] = useState<{ walletAddress: string; entryIndex: number } | null>(null);
 
   const leagueQuery = useQuery({
     queryKey: ["league-detail", valid],
@@ -37,6 +38,21 @@ export function LeagueLeaderboardPage() {
     staleTime: 10_000,
     refetchInterval: 30_000,
     retry: 1,
+  });
+
+  const breakdownQuery = useQuery({
+    queryKey: ["leaderboard-breakdown", chainId, valid, expanded?.walletAddress, expanded?.entryIndex],
+    queryFn: ({ signal }) =>
+      fetchLeaderboardBreakdown({
+        chainId: chainId!,
+        leagueAddress: valid!,
+        walletAddress: expanded!.walletAddress,
+        entryIndex: expanded!.entryIndex,
+        signal,
+      }),
+    enabled: Boolean(valid && chainId && expanded),
+    staleTime: 10_000,
+    retry: 0,
   });
 
   if (valid === null) {
@@ -105,19 +121,85 @@ export function LeagueLeaderboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {(lbQuery.data?.data.rows ?? []).map((r) => (
-                  <tr key={`${r.walletAddress}-${r.entryIndex}`} className="border-b border-border last:border-b-0">
-                    <td className="px-5 py-3 font-medium text-foreground">{r.rank}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <IdentityDisplay address={r.walletAddress as `0x${string}`} />
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">#{r.entryIndex}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-right font-semibold text-foreground">{r.totalPoints}</td>
-                    <td className="px-5 py-3 text-right font-medium text-foreground">{formatDelta(r.rankDelta)}</td>
-                  </tr>
-                ))}
+                {(lbQuery.data?.data.rows ?? []).flatMap((r) => {
+                  const isOpen = expanded?.walletAddress === r.walletAddress && expanded?.entryIndex === r.entryIndex;
+                  const key = `${r.walletAddress}-${r.entryIndex}`;
+                  return [
+                    <tr
+                      key={key}
+                      className="cursor-pointer border-b border-border hover:bg-muted/20"
+                      onClick={() =>
+                        setExpanded((cur) =>
+                          cur?.walletAddress === r.walletAddress && cur?.entryIndex === r.entryIndex
+                            ? null
+                            : { walletAddress: r.walletAddress, entryIndex: r.entryIndex },
+                        )
+                      }
+                    >
+                      <td className="px-5 py-3 font-medium text-foreground">{r.rank}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <IdentityDisplay address={r.walletAddress as `0x${string}`} />
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">#{r.entryIndex}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-right font-semibold text-foreground">{r.totalPoints}</td>
+                      <td className="px-5 py-3 text-right font-medium text-foreground">{formatDelta(r.rankDelta)}</td>
+                    </tr>,
+                    isOpen ? (
+                      <tr key={`${key}-expanded`} className="border-b border-border bg-muted/10">
+                        <td colSpan={4} className="px-5 py-4">
+                          {breakdownQuery.isLoading ? (
+                            <div className="text-sm text-muted-foreground">Loading breakdown…</div>
+                          ) : breakdownQuery.isError ? (
+                            <div className="text-sm text-destructive">Could not load breakdown.</div>
+                          ) : (
+                            <div className="grid gap-2">
+                              <div className="text-xs text-muted-foreground">
+                                Tiebreaker total goals:{" "}
+                                <span className="font-medium text-foreground">
+                                  {breakdownQuery.data?.data.entry.tiebreakerTotalGoals ?? "—"}
+                                </span>
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {(breakdownQuery.data?.data.groups ?? []).map((g) => (
+                                  <div key={g.groupId} className="rounded-md border border-border bg-background/40 p-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-sm font-medium text-foreground">{g.groupLabel}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {g.status === "pending" ? "Pending" : g.status === "posted" ? "Posted" : "—"}
+                                      </div>
+                                    </div>
+                                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                                      <div>
+                                        Predicted:{" "}
+                                        <span className="text-foreground">
+                                          {g.predicted ? g.predicted.join(", ") : "—"}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        Actual:{" "}
+                                        <span className="text-foreground">
+                                          {g.actual ? g.actual.map((x) => x ?? "?").join(", ") : g.status === "pending" ? "Pending" : "—"}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        Points:{" "}
+                                        <span className="text-foreground">
+                                          {typeof g.points === "number" ? `${g.points}${g.perfectBonus ? " (perfect)" : ""}` : "—"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ) : null,
+                  ].filter(Boolean);
+                })}
 
                 {(lbQuery.data?.data.rows ?? []).length === 0 ? (
                   <tr>

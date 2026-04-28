@@ -1,8 +1,20 @@
 import { getAddress, keccak256, toBytes, type Address } from "viem";
+import { groupLetterFromId, teamKeysForGroupLetter } from "../lib/worldCupGroups.js";
 
 export function teamKeyToAddress(teamKey: string): Address {
   const h = keccak256(toBytes(`wc2:${teamKey}`));
   return getAddress(`0x${h.slice(-40)}` as `0x${string}`);
+}
+
+export function addressToTeamKey(params: { groupId: number; address: Address }): string | null {
+  const letter = groupLetterFromId(params.groupId);
+  if (!letter) return null;
+  const keys = teamKeysForGroupLetter(letter);
+  for (const k of keys) {
+    const a = teamKeyToAddress(`group:${params.groupId}:${k}`);
+    if (a.toLowerCase() === params.address.toLowerCase()) return k;
+  }
+  return null;
 }
 
 export function computeGroupScore(params: {

@@ -51,6 +51,7 @@ export async function runResultsPostedIndexerOnce(params?: { chainId?: number })
       if (!Number.isFinite(groupId) || groupId < 0 || groupId > 11) continue;
       if (!rankings || rankings.length !== 4) continue;
       const actual = [rankings[0]!, rankings[1]!, rankings[2]!, rankings[3]!] as const;
+      const groupLetter = "ABCDEFGHIJKL"[groupId]!;
 
       // Fetch all stored entries for leagues on this chain (we only have leagueAddress, not leagueId).
       const entries = await prisma.entry.findMany({
@@ -60,7 +61,7 @@ export async function runResultsPostedIndexerOnce(params?: { chainId?: number })
 
       for (const e of entries) {
         const groups = e.groups as unknown as Record<string, [string, string, string, string]>;
-        const predicted = groups[String(groupId)];
+        const predicted = groups[groupLetter];
         if (!predicted) continue;
 
         const score = computeGroupScore({

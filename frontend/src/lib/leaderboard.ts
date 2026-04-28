@@ -14,6 +14,21 @@ export type LeaderboardResponse = {
   rows: LeaderboardRow[];
 };
 
+export type LeaderboardBreakdownGroup = {
+  groupId: number;
+  groupLabel: string;
+  status: "posted" | "pending" | "unknown";
+  predicted: [string, string, string, string] | null;
+  actual: [string | null, string | null, string | null, string | null] | null;
+  points: number | null;
+  perfectBonus: boolean | null;
+};
+
+export type LeaderboardBreakdownResponse = {
+  entry: { walletAddress: string; entryIndex: number; tiebreakerTotalGoals: number };
+  groups: LeaderboardBreakdownGroup[];
+};
+
 export async function fetchLeaderboard(params: {
   chainId: number;
   leagueAddress: string;
@@ -25,5 +40,25 @@ export async function fetchLeaderboard(params: {
   const json = (await res.json()) as unknown;
   if (!res.ok) throw new Error("Could not load leaderboard.");
   return json as { data: LeaderboardResponse };
+}
+
+export async function fetchLeaderboardBreakdown(params: {
+  chainId: number;
+  leagueAddress: string;
+  walletAddress: string;
+  entryIndex: number;
+  signal?: AbortSignal;
+}): Promise<{ data: LeaderboardBreakdownResponse }> {
+  const { chainId, leagueAddress, walletAddress, entryIndex, signal } = params;
+  const qs = new URLSearchParams({
+    chainId: String(chainId),
+    leagueAddress,
+    walletAddress,
+    entryIndex: String(entryIndex),
+  });
+  const res = await fetch(apiUrl(`/api/v1/leaderboard/breakdown?${qs.toString()}`), { credentials: "include", signal });
+  const json = (await res.json()) as unknown;
+  if (!res.ok) throw new Error("Could not load score breakdown.");
+  return json as { data: LeaderboardBreakdownResponse };
 }
 
