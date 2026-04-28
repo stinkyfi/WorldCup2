@@ -15,6 +15,24 @@ function walletConnectProjectId(): string {
   return "00000000000000000000000000000000";
 }
 
+/**
+ * Some default/public RPCs (and some WalletConnect-provided RPC fallbacks) are not CORS-enabled
+ * for browser use (e.g. `eth.merkle.io`). Override with known browser-friendly RPC URLs.
+ */
+const ethereumMainnet = defineChain({
+  ...mainnet,
+  rpcUrls: {
+    default: { http: ["https://cloudflare-eth.com"] },
+  },
+});
+
+const baseMainnet = defineChain({
+  ...base,
+  rpcUrls: {
+    default: { http: ["https://mainnet.base.org"] },
+  },
+});
+
 /** Sonic mainnet — used with league creation wizard (Story 3.1 / 3.2). */
 export const sonicMainnet = defineChain({
   id: 146,
@@ -35,7 +53,7 @@ export const sonicMainnet = defineChain({
 export const wagmiConfig = getDefaultConfig({
   appName: "WorldCup2",
   projectId: walletConnectProjectId(),
-  chains: [baseSepolia, base, mainnet, sonicMainnet],
+  chains: [baseSepolia, baseMainnet, ethereumMainnet, sonicMainnet],
   ssr: false,
   wallets: [
     {

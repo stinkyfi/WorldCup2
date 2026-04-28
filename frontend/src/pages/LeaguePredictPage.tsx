@@ -64,6 +64,7 @@ export function LeaguePredictPage() {
 
   const [orderByGroup, setOrderByGroup] = useState<GroupOrderState>(() => initState());
   const [tiebreaker, setTiebreaker] = useState<string>("");
+  const [mobileStep, setMobileStep] = useState<number>(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -75,6 +76,27 @@ export function LeaguePredictPage() {
     [orderByGroup],
   );
   const tiebreakerFilled = /^\d+$/.test(tiebreaker.trim()) && Number(tiebreaker.trim()) >= 1 && Number(tiebreaker.trim()) <= 1000;
+
+  const mobileGroup = WORLD_CUP_GROUPS[Math.min(WORLD_CUP_GROUPS.length - 1, Math.max(0, mobileStep))]!;
+  const mobileOrder = orderByGroup[mobileGroup.id];
+  const teamById = useMemo(() => new Map(mobileGroup.teams.map((t) => [t.id, t.name] as const)), [mobileGroup.teams]);
+
+  function setMobilePick(pos: 0 | 1 | 2 | 3, teamId: string) {
+    setOrderByGroup((prev) => {
+      const current = prev[mobileGroup.id];
+      const next = [...current];
+      // Keep choices unique by swapping if needed.
+      const otherIdx = next.indexOf(teamId);
+      if (otherIdx !== -1) {
+        const tmp = next[pos];
+        next[pos] = teamId;
+        next[otherIdx] = tmp;
+      } else {
+        next[pos] = teamId;
+      }
+      return { ...prev, [mobileGroup.id]: next };
+    });
+  }
 
   if (!isValidAddress) {
     return (
@@ -97,7 +119,7 @@ export function LeaguePredictPage() {
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Predictions</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Desktop drag-and-drop (mobile flow ships in Story 4.4).
+              Desktop drag-and-drop on large screens; mobile uses paginated selectors.
             </p>
           </div>
           <Button type="button" variant="secondary" asChild className="min-h-11">
@@ -105,13 +127,67 @@ export function LeaguePredictPage() {
           </Button>
         </div>
 
-        <div className="mb-6 rounded-lg border border-border bg-card/40 p-4 text-sm text-muted-foreground lg:block hidden">
+        <div className="mb-6 hidden rounded-lg border border-border bg-card/40 p-4 text-sm text-muted-foreground lg:block">
           Drag teams within each group to set positions 1–4.
         </div>
         <div className="mb-6 rounded-lg border border-border bg-card/40 p-4 text-sm text-muted-foreground lg:hidden">
-          Mobile prediction UI ships in Story 4.4. Use a desktop-sized window for drag-and-drop.
+          Mobile: set positions using dropdowns. Swipe/paginate through groups A–L.
         </div>
 
+        {/* Mobile paginated selectors */}
+        <div className="lg:hidden">
+          <Card className="mb-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">
+                {mobileGroup.label} <span className="text-sm text-muted-foreground">({mobileStep + 1} / 12)</span>
+              </CardTitle>
+              <CardDescription>Select positions 1–4</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[0, 1, 2, 3].map((pos) => (
+                <div key={pos} className="grid gap-2">
+                  <label className="text-sm font-medium text-foreground" htmlFor={`pos-${pos}`}>
+                    Position {pos + 1}
+                  </label>
+                  <select
+                    id={`pos-${pos}`}
+                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    value={mobileOrder[pos] ?? ""}
+                    onChange={(e) => setMobilePick(pos as 0 | 1 | 2 | 3, e.target.value)}
+                  >
+                    {mobileGroup.teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {teamById.get(t.id) ?? t.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="min-h-11"
+                  onClick={() => setMobileStep((s) => Math.max(0, s - 1))}
+                  disabled={mobileStep === 0}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  className="min-h-11"
+                  onClick={() => setMobileStep((s) => Math.min(11, s + 1))}
+                  disabled={mobileStep === 11}
+                >
+                  Next
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Desktop drag-and-drop */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -129,7 +205,7 @@ export function LeaguePredictPage() {
             setOrderByGroup((prev) => ({ ...prev, [group.id]: arrayMove(prev[group.id], oldIndex, newIndex) }));
           }}
         >
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="hidden gap-4 lg:grid lg:grid-cols-2">
             {WORLD_CUP_GROUPS.map((g) => {
               const order = orderByGroup[g.id];
               const teamById = new Map(g.teams.map((t) => [t.id, t.name] as const));

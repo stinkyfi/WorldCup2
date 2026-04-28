@@ -50,3 +50,10 @@ _Source: `_bmad-output/planning-artifacts/epics.md` — Epic 4, Story 4.2._
 - `contracts`: `npm test`
 - `frontend`: `npm run lint && npm test && npm run build`
 
+## Known dev issue (CORS/RPC)
+
+Some default/public RPC endpoints are **not CORS-enabled for browser usage**. When wagmi/viem attempts to perform JSON-RPC calls directly from `http://localhost:5173`, the browser may block the request with a CORS error (example host observed: `eth.merkle.io`), preventing the entry page from loading its on-chain prerequisite reads (ERC-20 allowance).
+
+- **Mitigation direction**: ensure all chains used in the app have explicit, browser-safe RPC URLs in wagmi config (or proxy JSON-RPC via backend in dev).
+- **UX follow-up**: distinguish “compliance API status fetch failed” vs “RPC allowance fetch failed” so the user sees the real root cause.
+

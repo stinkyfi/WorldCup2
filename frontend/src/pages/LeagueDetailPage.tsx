@@ -324,17 +324,15 @@ export function LeagueDetailPage() {
                   type="button"
                   className="min-h-11"
                   onClick={() => {
-                    if (!isConnected) {
-                      openConnectModal?.();
-                      return;
-                    }
                     void navigate(`/league/${address}/enter`);
                   }}
                 >
                   Enter League
                 </Button>
                 {!isConnected ? (
-                  <p className="text-xs text-muted-foreground">Connect a wallet to proceed.</p>
+                  <p className="text-xs text-muted-foreground">
+                    You’ll be prompted to connect and sign in on the next screen.
+                  </p>
                 ) : null}
               </div>
             </div>

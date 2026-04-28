@@ -55,3 +55,11 @@ _Source: `_bmad-output/planning-artifacts/epics.md` — Epic 4, Story 4.1._
 - `backend`: `docker compose up -d postgres && npx prisma migrate deploy && npm test`
 - `frontend`: `npm run lint && npm test && npm run build`
 
+## Known dev issue (not reliably usable in browser)
+
+In local dev, some users cannot open the entry flow; the UI shows **“Could not load compliance status.”** and Retry does not recover.
+
+- **Observed console error**: browser CORS blocks requests to a public RPC host (example: `eth.merkle.io`) during preflight.
+- **Why this blocks the entry screen**: the entry page performs an on-chain read of ERC-20 `allowance()` during initial render to decide whether it needs an `approve()` step. If the configured RPC is not CORS-enabled, that read fails and the page surfaces a generic “Could not load compliance status.” message.
+- **Status**: needs a proper dev-safe transport strategy (e.g. browser-safe public RPCs per chain, or a backend RPC proxy) and improved UI error attribution (separate “API compliance status” vs “RPC allowance read” failures).
+
