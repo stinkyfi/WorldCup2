@@ -8,15 +8,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Minimal league row for Story 1.8 scaffold; extended by later epics.
+/// Indexed league row (Story 2.4 browse); populated by indexer / admin in later epics.
 model League {
-  id        String   @id @default(cuid())
-  chainId   Int      @map("chain_id")
-  title     String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                String    @id @default(cuid())
+  chainId           Int       @map("chain_id")
+  title             String
+  contractAddress   String?   @map("contract_address")
+  entryTokenAddress String    @default("0x0000000000000000000000000000000000000000") @map("entry_token_address")
+  entryTokenSymbol  String    @default("ETH") @map("entry_token_symbol")
+  entryFeeWei       BigInt    @default(0) @map("entry_fee_wei")
+  poolWei           BigInt    @default(0) @map("pool_wei")
+  entryCount        Int       @default(0) @map("entry_count")
+  maxEntries        Int       @default(1000) @map("max_entries")
+  lockAt            DateTime  @map("lock_at")
+  featured          Boolean   @default(false)
+  promotedUntil     DateTime? @map("promoted_until")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@index([chainId], map: "idx_leagues_chain_id")
+  @@index([featured], map: "idx_leagues_featured")
   @@map("leagues")
 }
 

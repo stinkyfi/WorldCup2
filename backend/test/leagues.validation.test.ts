@@ -16,3 +16,10 @@ test("POST /api/v1/leagues with invalid body returns { error, code } envelope", 
   assert.ok(typeof body.error === "string" && body.error.length > 0);
   await app.close();
 });
+
+test("GET /api/v1/leagues/browse with non-digit minFeeWei returns 422", async () => {
+  const app = await createApp();
+  const res = await app.inject({ method: "GET", url: "/api/v1/leagues/browse?minFeeWei=abc" });
+  assert.equal(res.statusCode, 422);
+  await app.close();
+});

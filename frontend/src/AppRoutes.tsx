@@ -4,7 +4,7 @@ import { RequireAdmin } from "@/components/RequireAdmin";
 import { RequireSiwe } from "@/components/RequireSiwe";
 import { AdminPlaceholderPage } from "@/pages/AdminPlaceholderPage";
 import { LandingPage } from "@/pages/LandingPage";
-import { BrowsePlaceholderPage } from "@/pages/BrowsePlaceholderPage";
+import { BrowsePage } from "@/pages/BrowsePage";
 import { CreatePlaceholderPage } from "@/pages/CreatePlaceholderPage";
 import { MyLeaguesPlaceholderPage } from "@/pages/MyLeaguesPlaceholderPage";
 
@@ -13,7 +13,7 @@ export function AppRoutes() {
     <AppShell>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/browse" element={<BrowsePlaceholderPage />} />
+        <Route path="/browse" element={<BrowsePage />} />
         <Route
           path="/create"
           element={
