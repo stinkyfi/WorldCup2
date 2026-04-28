@@ -100,6 +100,19 @@ describe("OracleController", () => {
         (err: Error) => err.message.includes("UnauthorisedOracle")
       );
     });
+
+    it("owner can post results (admin/manual fallback) — getResults returns correct rankings", async () => {
+      const { oracleController, owner, otherAccounts } = await deployOracleController();
+      const rankings = makeRankings(otherAccounts);
+
+      await oracleController.write.postResults([1, rankings], { account: owner.account });
+
+      const stored = await oracleController.read.getResults([1]);
+      assert.deepEqual(
+        stored.map((a: string) => a.toLowerCase()),
+        rankings.map(a => a.toLowerCase())
+      );
+    });
   });
 
   // ─── hasResultsPosted ────────────────────────────────────────────────────────

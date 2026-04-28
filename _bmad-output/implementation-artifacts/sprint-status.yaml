@@ -102,7 +102,7 @@ development_status:
   epic-5: in-progress
   5-1-primary-oracle-cron: done
   5-2-redundant-oracle-cron: done
-  5-3-admin-manual-results-posting: backlog
+  5-3-admin-manual-results-posting: done
   5-4-telegram-failure-alerts: backlog
   5-5-oracle-grace-period-extension: backlog
   5-6-oracle-health-admin-screen: backlog

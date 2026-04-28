@@ -55,8 +55,8 @@ contract OracleController is Ownable {
     /// @notice Reverts when a zero address is provided where a valid address is required.
     error InvalidAddress();
 
-    modifier onlyOracle() {
-        if (msg.sender != oracle) revert UnauthorisedOracle(msg.sender);
+    modifier onlyOracleOrOwner() {
+        if (msg.sender != oracle && msg.sender != owner()) revert UnauthorisedOracle(msg.sender);
         _;
     }
 
@@ -81,7 +81,7 @@ contract OracleController is Ownable {
     ///         A second call with conflicting data reverts with ResultsAlreadyPosted.
     /// @param groupId The group index (0–11).
     /// @param rankings The 4 team addresses ranked 1st–4th.
-    function postResults(uint8 groupId, address[4] calldata rankings) external onlyOracle {
+    function postResults(uint8 groupId, address[4] calldata rankings) external onlyOracleOrOwner {
         if (_resultsPosted[groupId]) {
             // Idempotency check: identical data → silent no-op; different data → revert
             address[4] storage stored = _results[groupId];
