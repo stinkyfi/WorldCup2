@@ -1,6 +1,8 @@
 import { Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
+import { RequireAdmin } from "@/components/RequireAdmin";
 import { RequireSiwe } from "@/components/RequireSiwe";
+import { AdminPlaceholderPage } from "@/pages/AdminPlaceholderPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { BrowsePlaceholderPage } from "@/pages/BrowsePlaceholderPage";
 import { CreatePlaceholderPage } from "@/pages/CreatePlaceholderPage";
@@ -25,6 +27,16 @@ export function AppRoutes() {
           element={
             <RequireSiwe>
               <MyLeaguesPlaceholderPage />
+            </RequireSiwe>
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            <RequireSiwe>
+              <RequireAdmin>
+                <AdminPlaceholderPage />
+              </RequireAdmin>
             </RequireSiwe>
           }
         />

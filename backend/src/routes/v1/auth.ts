@@ -5,6 +5,7 @@ import { z } from "zod";
 import { AppError } from "../../appError.js";
 import { config } from "../../config.js";
 import { prisma } from "../../db.js";
+import { isWalletAdminForChain } from "../../lib/adminWhitelist.js";
 import { sendError, sendSuccess } from "../../lib/envelope.js";
 
 /** HTTP-only session cookie (opaque DB id). */
@@ -19,6 +20,10 @@ const nonceBodySchema = z.object({
 const verifyBodySchema = z.object({
   message: z.string().min(1),
   signature: z.string().min(2),
+});
+
+const sessionChainBodySchema = z.object({
+  chainId: z.number().int(),
 });
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
@@ -87,11 +92,12 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       return sendError(reply, 401, "INVALID_SIGNATURE", "Could not verify wallet signature.");
     }
 
-    await prisma.authNonce.delete({ where: { id: nonceRow.id } });
+    await prisma.authNonce.deleteMany({ where: { id: nonceRow.id } });
 
     const expiresAt = new Date(Date.now() + config.sessionMaxAgeMs);
+    const isAdmin = await isWalletAdminForChain(addr, siweMessage.chainId);
     const session = await prisma.authSession.create({
-      data: { address: addr, chainId: siweMessage.chainId, expiresAt },
+      data: { address: addr, chainId: siweMessage.chainId, expiresAt, isAdmin },
     });
 
     const maxAgeSec = Math.floor(config.sessionMaxAgeMs / 1000);
@@ -103,7 +109,40 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       maxAge: maxAgeSec,
     });
 
-    return sendSuccess(reply, { address: addr, chainId: siweMessage.chainId });
+    return sendSuccess(reply, { address: addr, chainId: siweMessage.chainId, isAdmin });
+  });
+
+  fastify.post("/auth/session-chain", async (request, reply) => {
+    const body = sessionChainBodySchema.parse(request.body);
+    if (!config.siweAllowedChainIds.includes(body.chainId)) {
+      return sendError(reply, 400, "INVALID_CHAIN", "This network is not supported.");
+    }
+
+    const sid = request.cookies[SESSION_COOKIE_NAME];
+    if (!sid) {
+      return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    }
+
+    const session = await prisma.authSession.findUnique({ where: { id: sid } });
+    if (!session || session.expiresAt < new Date()) {
+      if (session) {
+        await prisma.authSession.delete({ where: { id: sid } }).catch(() => undefined);
+      }
+      reply.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+      return sendError(reply, 401, "SESSION_EXPIRED", "Your session expired. Sign in again.");
+    }
+
+    const isAdmin = await isWalletAdminForChain(session.address, body.chainId);
+    await prisma.authSession.update({
+      where: { id: sid },
+      data: { chainId: body.chainId, isAdmin },
+    });
+
+    return sendSuccess(reply, {
+      address: session.address,
+      chainId: body.chainId,
+      isAdmin,
+    });
   });
 
   fastify.get("/auth/me", async (request, reply) => {
@@ -121,7 +160,11 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       return sendSuccess(reply, null);
     }
 
-    return sendSuccess(reply, { address: session.address, chainId: session.chainId });
+    return sendSuccess(reply, {
+      address: session.address,
+      chainId: session.chainId,
+      isAdmin: session.isAdmin,
+    });
   });
 
   fastify.post("/auth/logout", async (request, reply) => {

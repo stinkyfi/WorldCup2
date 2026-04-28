@@ -25,9 +25,13 @@ export const config = {
   port: Number(process.env.API_PORT ?? "3001") || 3001,
   databaseUrl: required("DATABASE_URL"),
   /** SIWE `domain` values accepted from the client message (hostnames, no scheme). */
-  siweAllowedDomains: commaList("SIWE_ALLOWED_DOMAINS", "localhost:5173,127.0.0.1:5173"),
-  /** Chain IDs allowed in SIWE messages (default: Base Sepolia). */
-  siweAllowedChainIds: intList("SIWE_ALLOWED_CHAIN_IDS", "84532"),
+  get siweAllowedDomains(): string[] {
+    return commaList("SIWE_ALLOWED_DOMAINS", "localhost:5173,127.0.0.1:5173");
+  },
+  /** Chain IDs allowed in SIWE messages and session chain updates (default: Base Sepolia). */
+  get siweAllowedChainIds(): number[] {
+    return intList("SIWE_ALLOWED_CHAIN_IDS", "84532");
+  },
   /** Session lifetime for HTTP-only cookie sessions. */
   sessionMaxAgeMs: Math.max(60_000, Number(process.env.SESSION_MAX_AGE_MS ?? String(weekMs)) || weekMs),
   /** Browser origins allowed for credentialed CORS (comma-separated). */

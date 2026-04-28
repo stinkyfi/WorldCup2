@@ -8,7 +8,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SiweMessage } from "siwe";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAccount, WagmiProvider } from "wagmi";
+import { SessionChainSync } from "@/components/SessionChainSync";
 import { apiUrl } from "@/lib/apiBase";
+import type { SessionUser } from "@/lib/siweAuthContext";
 import { SiweAuthUiContext, SiweSessionContext } from "@/lib/siweAuthContext";
 import { wagmiConfig } from "@/wagmi";
 
@@ -48,6 +50,7 @@ function WalletSessionSync({
 
 function SiweRainbowKitInner({ children }: { children: ReactNode }) {
   const [authStatus, setAuthStatus] = useState<"loading" | "unauthenticated" | "authenticated">("loading");
+  const [me, setMe] = useState<SessionUser | null>(null);
   const [siweError, setSiweError] = useState<string | null>(null);
   const { address } = useAccount();
 
@@ -58,12 +61,20 @@ function SiweRainbowKitInner({ children }: { children: ReactNode }) {
       const res = await fetch(apiUrl("/api/v1/auth/me"), { credentials: "include" });
       if (!res.ok) {
         setAuthStatus("unauthenticated");
+        setMe(null);
         return;
       }
-      const json = (await res.json()) as { data: { address: string; chainId: number } | null };
-      setAuthStatus(json.data ? "authenticated" : "unauthenticated");
+      const json = (await res.json()) as { data: SessionUser | null };
+      if (!json.data) {
+        setAuthStatus("unauthenticated");
+        setMe(null);
+        return;
+      }
+      setAuthStatus("authenticated");
+      setMe(json.data);
     } catch {
       setAuthStatus("unauthenticated");
+      setMe(null);
     }
   }, []);
 
@@ -119,22 +130,29 @@ function SiweRainbowKitInner({ children }: { children: ReactNode }) {
             setSiweError("You must approve the wallet sign-in request to continue.");
             return false;
           }
-          setAuthStatus("authenticated");
+          await refreshSession();
           return true;
         },
         signOut: async () => {
           setSiweError(null);
           await fetch(apiUrl("/api/v1/auth/logout"), { method: "POST", credentials: "include" });
           setAuthStatus("unauthenticated");
+          setMe(null);
         },
       }),
-    [address],
+    [address, refreshSession],
   );
 
   const siweAuthUi = useMemo(() => ({ siweError, clearSiweError }), [siweError, clearSiweError]);
-  const sessionValue = useMemo(() => ({ authStatus }), [authStatus]);
+  const sessionValue = useMemo(
+    () => ({ authStatus, me, refreshSession }),
+    [authStatus, me, refreshSession],
+  );
 
-  const onSessionCleared = useCallback(() => setAuthStatus("unauthenticated"), []);
+  const onSessionCleared = useCallback(() => {
+    setAuthStatus("unauthenticated");
+    setMe(null);
+  }, []);
 
   return (
     <SiweSessionContext.Provider value={sessionValue}>
@@ -142,6 +160,7 @@ function SiweRainbowKitInner({ children }: { children: ReactNode }) {
         <RainbowKitAuthenticationProvider adapter={adapter} status={authStatus} enabled>
           <RainbowKitProvider theme={broadcastTheme}>
             <WalletSessionSync authStatus={authStatus} onSessionCleared={onSessionCleared} />
+            <SessionChainSync />
             {children}
           </RainbowKitProvider>
         </RainbowKitAuthenticationProvider>

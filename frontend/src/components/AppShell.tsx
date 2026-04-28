@@ -1,7 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Menu, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { IdentityDisplay } from "@/components/IdentityDisplay";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useNavDrawer } from "@/stores/navDrawerStore";
 import { cn } from "@/lib/utils";
 
-const NAV_LINKS = [
+const BASE_NAV_LINKS = [
   { to: "/browse", label: "Browse" },
   { to: "/my-leagues", label: "My Leagues" },
   { to: "/create", label: "Create" },
@@ -26,7 +26,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const open = useNavDrawer((s) => s.open);
   const setOpen = useNavDrawer((s) => s.setOpen);
   const { address } = useAccount();
-  const { authStatus } = useSiweSession();
+  const { authStatus, me } = useSiweSession();
+  const navLinks = useMemo(() => {
+    if (me?.isAdmin) {
+      return [...BASE_NAV_LINKS, { to: "/admin" as const, label: "Admin" }];
+    }
+    return [...BASE_NAV_LINKS];
+  }, [me?.isAdmin]);
   const { siweError, clearSiweError } = useSiweAuthUi();
 
   return (
@@ -56,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex"
             aria-label="Primary"
           >
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <NavLink key={link.to} to={link.to} className={navClass}>
                 {link.label}
               </NavLink>
@@ -93,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </div>
                   <Dialog.Description className="sr-only">Main site navigation</Dialog.Description>
                   <nav className="flex flex-col gap-2" aria-label="Mobile primary">
-                    {NAV_LINKS.map((link) => (
+                    {navLinks.map((link) => (
                       <Dialog.Close asChild key={link.to}>
                         <NavLink
                           to={link.to}

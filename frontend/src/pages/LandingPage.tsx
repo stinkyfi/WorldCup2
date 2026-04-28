@@ -1,10 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { HeroStats } from "@/components/HeroStats";
 import { fetchPlatformStats } from "@/lib/platformStats";
 
 export function LandingPage() {
+  const [search, setSearch] = useSearchParams();
+  const adminAccessDenied = search.get("notice") === "admin_denied";
+
+  function dismissAdminNotice() {
+    const next = new URLSearchParams(search);
+    next.delete("notice");
+    setSearch(next, { replace: true });
+  }
+
   const statsQuery = useQuery({
     queryKey: ["platform-stats"],
     queryFn: ({ signal }) => fetchPlatformStats(signal),
@@ -14,6 +23,17 @@ export function LandingPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      {adminAccessDenied ? (
+        <div
+          className="mb-6 flex flex-col gap-2 rounded-md border border-border bg-muted/50 px-4 py-3 text-sm text-foreground sm:flex-row sm:items-center sm:justify-between"
+          role="status"
+        >
+          <span>Access denied: this wallet is not an admin for that area on the selected network.</span>
+          <button type="button" className="text-left text-primary underline underline-offset-2 sm:text-right" onClick={() => dismissAdminNotice()}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
       <section aria-labelledby="hero-heading" className="mb-10">
         <h1 id="hero-heading" className="mb-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           Predict the beautiful game

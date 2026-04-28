@@ -4,8 +4,9 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: worldcup2-postgres
+    # Host 5433 avoids clashing with a local PostgreSQL install on 5432 (Windows/macOS).
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: worldcup2
       POSTGRES_PASSWORD: worldcup2_dev
