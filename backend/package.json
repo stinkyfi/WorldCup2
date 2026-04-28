@@ -12,7 +12,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "oracle:primary": "tsx src/cron/primaryOracle.ts",
+    "oracle:redundant": "tsx src/cron/redundantOracle.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

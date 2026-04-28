@@ -99,3 +99,32 @@ model ComplianceAcknowledgement {
   @@index([leagueId], map: "idx_compliance_league_id")
   @@map("compliance_acknowledgements")
 }
+
+/// Story 5.1 — primary oracle cron post logs (per chain + group).
+model OraclePost {
+  id        String   @id @default(cuid())
+  chainId   Int      @map("chain_id")
+  groupId   Int      @map("group_id")
+  source    String   @default("primary") @map("source") // primary | redundant | manual
+  method    String   @map("method") // postResults | setResultsForTesting
+  txHash    String?  @map("tx_hash")
+  success   Boolean  @default(false)
+  postedAt  DateTime @default(now()) @map("posted_at")
+
+  @@index([chainId, groupId], map: "idx_oracle_posts_chain_group")
+  @@index([postedAt], map: "idx_oracle_posts_posted_at")
+  @@map("oracle_posts")
+}
+
+/// Story 5.1 — primary oracle cron error logs (non-fatal; used for alerts in later stories).
+model OracleError {
+  id        String   @id @default(cuid())
+  chainId   Int      @map("chain_id")
+  groupId   Int?     @map("group_id")
+  message   String
+  details   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([chainId, createdAt], map: "idx_oracle_errors_chain_time")
+  @@map("oracle_errors")
+}

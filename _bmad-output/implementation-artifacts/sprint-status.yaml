@@ -99,9 +99,9 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 5: Oracle & Results Posting
   # ─────────────────────────────────────────────────────────────
-  epic-5: backlog
-  5-1-primary-oracle-cron: backlog
-  5-2-redundant-oracle-cron: backlog
+  epic-5: in-progress
+  5-1-primary-oracle-cron: done
+  5-2-redundant-oracle-cron: done
   5-3-admin-manual-results-posting: backlog
   5-4-telegram-failure-alerts: backlog
   5-5-oracle-grace-period-extension: backlog
