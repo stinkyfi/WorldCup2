@@ -215,6 +215,49 @@ export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
+  /** Story 6.5 — creator-only: reveal all entry predictions after lock time. */
+  fastify.get("/leagues/by-address/:address/predictions", async (request, reply) => {
+    const session = await sessionFromRequest(request);
+    if (!session) return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+
+    const parsed = addressParamSchema.safeParse((request.params as { address?: unknown })?.address);
+    if (!parsed.success) throw parsed.error;
+    const address = parsed.data;
+
+    const row = await prisma.league.findFirst({
+      where: { contractAddress: { equals: address, mode: "insensitive" } },
+    });
+    if (!row) return reply.status(404).send({ error: "League not found", code: "NOT_FOUND" });
+
+    if (!row.creatorAddress || row.creatorAddress.toLowerCase() !== session.address.toLowerCase()) {
+      return sendError(reply, 403, "FORBIDDEN", "You do not have access to this league's predictions.");
+    }
+
+    const now = new Date();
+    if (row.lockAt > now) {
+      return sendSuccess(reply, { locked: false, lockAt: row.lockAt.toISOString(), entries: [] as unknown[] });
+    }
+
+    const entries = await prisma.entry.findMany({
+      where: { chainId: row.chainId, leagueAddress: address.toLowerCase() },
+      orderBy: [{ createdAt: "asc" }],
+      select: { walletAddress: true, entryIndex: true, entryId: true, groups: true, tiebreakerTotalGoals: true, createdAt: true },
+    });
+
+    return sendSuccess(reply, {
+      locked: true,
+      lockAt: row.lockAt.toISOString(),
+      entries: entries.map((e) => ({
+        walletAddress: e.walletAddress,
+        entryIndex: e.entryIndex,
+        entryId: e.entryId,
+        groups: e.groups,
+        tiebreakerTotalGoals: e.tiebreakerTotalGoals,
+        createdAt: e.createdAt.toISOString(),
+      })),
+    });
+  });
+
   fastify.get("/leagues/browse", async (request, reply) => {
     const parsed = browseQuerySchema.safeParse(
       normalizeQuery(request.query as Record<string, string | string[] | undefined>),

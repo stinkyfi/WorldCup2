@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useAccount } from "wagmi";
+import { useAccount, useBlock } from "wagmi";
 import { formatUnits } from "viem";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { fetchCreatorPredictions } from "@/lib/creatorPredictions";
 import { chainLabel } from "@/lib/leagueBrowse";
 import { formatTimeToLock } from "@/lib/leagueDisplay";
 import { fetchLeagueCreatorDashboard, HttpError } from "@/lib/leagueCreatorDashboard";
@@ -47,6 +48,22 @@ export function LeagueCreatorDashboardPage() {
   });
 
   const league = query.data?.data.league;
+  const leagueChainId = league?.chainId as 1 | 146 | 8453 | 84532 | undefined;
+  const { data: latestBlock } = useBlock({
+    chainId: leagueChainId,
+    query: { enabled: Boolean(leagueChainId) },
+  });
+  const lockAtSec =
+    league?.lockAt ? BigInt(Math.floor(new Date(league.lockAt).getTime() / 1000)) : null;
+  const locked = typeof latestBlock?.timestamp !== "undefined" && lockAtSec !== null ? latestBlock.timestamp >= lockAtSec : false;
+
+  const predictionsQuery = useQuery({
+    queryKey: ["creator-predictions", validAddress],
+    queryFn: ({ signal }) => fetchCreatorPredictions({ leagueAddress: validAddress!, signal }),
+    enabled: Boolean(validAddress && locked),
+    staleTime: 30_000,
+    retry: 0,
+  });
 
   // Redirect non-creators back to public league page.
   if (query.error instanceof HttpError && query.error.status === 403 && validAddress) {
@@ -193,6 +210,64 @@ export function LeagueCreatorDashboardPage() {
               </Button>
               {copied === "error" ? <span className="self-center text-xs text-destructive">Copy failed.</span> : null}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>View all predictions</CardTitle>
+            <CardDescription>
+              {locked ? "Predictions are revealed after lock time." : "Predictions are hidden until the league locks."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {!locked ? (
+              <p className="text-muted-foreground">Locked at {new Date(league.lockAt).toLocaleString()}.</p>
+            ) : predictionsQuery.isLoading ? (
+              <p className="text-muted-foreground">Loading predictions…</p>
+            ) : predictionsQuery.isError ? (
+              <p className="text-destructive">Could not load predictions.</p>
+            ) : (
+              <>
+                <p className="text-muted-foreground">{predictionsQuery.data?.data.entries.length ?? 0} entries</p>
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full min-w-[720px] text-sm">
+                    <thead className="text-muted-foreground">
+                      <tr className="border-b border-border">
+                        <th className="px-4 py-3 text-left font-medium">Wallet</th>
+                        <th className="px-4 py-3 text-left font-medium">Entry</th>
+                        <th className="px-4 py-3 text-left font-medium">Tiebreaker</th>
+                        <th className="px-4 py-3 text-left font-medium">Predictions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(predictionsQuery.data?.data.entries ?? []).map((e) => (
+                        <tr key={`${e.walletAddress}-${e.entryIndex}`} className="border-b border-border last:border-b-0">
+                          <td className="px-4 py-3 font-mono text-xs text-foreground">{e.walletAddress}</td>
+                          <td className="px-4 py-3 text-foreground">#{e.entryIndex}</td>
+                          <td className="px-4 py-3 text-foreground">{e.tiebreakerTotalGoals}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {Object.entries(e.groups)
+                              .sort(([a], [b]) => a.localeCompare(b))
+                              .map(([k, v]) => `${k}: ${v.join(", ")}`)
+                              .join(" • ")}
+                          </td>
+                        </tr>
+                      ))}
+                      {(predictionsQuery.data?.data.entries ?? []).length === 0 ? (
+                        <tr>
+                          <td className="px-4 py-6 text-center text-muted-foreground" colSpan={4}>
+                            No stored predictions yet. Players must submit their payloads to the backend for reveal/scoring.
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
