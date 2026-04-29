@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { keccak256, encodePacked, getEventSelector } from "viem";
 import hre from "hardhat";
-import { deployLeague } from "./fixtures/index.js";
+import { deployLeague, LEAGUE_DISPUTE_DISABLED } from "./fixtures/index.js";
 
 // ─── Merkle helpers ──────────────────────────────────────────────────────────
 // OZ MerkleProof.verify uses sorted-pair hashing (smaller sibling first).
@@ -120,6 +120,7 @@ describe("League", () => {
       devWalletClient.account.address,
       200n, 300n,
       { token: token.address, entryFee, maxEntries: 1n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
 
     await token.write.approve([league.address, entryFee], { account: player1.account });
@@ -149,6 +150,7 @@ describe("League", () => {
       devWalletClient.account.address,
       200n, 300n,
       { token: token.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 1n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
 
     await token.write.approve([league.address, entryFee * 2n], { account: player1.account });
@@ -175,6 +177,7 @@ describe("League", () => {
       creator.account.address, oracle.account.address, devWalletClient.account.address,
       200n, 300n,
       { token: token.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 5n, minThreshold: 2n, revisionFee: 0n, revisionPolicy: 0, lockTime },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
 
     await token.write.approve([league.address, entryFee], { account: player1.account });
@@ -241,6 +244,7 @@ describe("League", () => {
       creator.account.address, oracle.account.address, devWalletClient.account.address,
       200n, 300n,
       { token: tok.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 5n, minThreshold: 3n, revisionFee: 0n, revisionPolicy: 0, lockTime: lt },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     await tok.write.approve([lg.address, entryFee * 2n], { account: player.account });
     await lg.write.enter([`0x${"ab".repeat(32)}` as Hex], { account: player.account });
@@ -288,6 +292,7 @@ describe("League", () => {
       creator.account.address, oracle.account.address, devWalletClient.account.address,
       200n, 300n,
       { token: token.address, entryFee: 1_000_000_000_000_000_000n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime: lt },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     await advancePast(lt);
     // Should not revert, state stays Active=0
@@ -389,6 +394,7 @@ describe("League", () => {
         revisionPolicy: 0,
         lockTime,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     await token.write.approve([league.address, entryFee], { account: player1.account });
     await league.write.enter([`0x${"ab".repeat(32)}` as Hex], { account: player1.account });
@@ -632,6 +638,7 @@ describe("League", () => {
       connection.viem.deployContract("League", [
         zero, oracle.account.address, devWalletClient.account.address, 200n, 300n,
         { token: token.address, entryFee: 1n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime: lt },
+        ...LEAGUE_DISPUTE_DISABLED,
       ]),
       (err: Error) => err.message.includes("InvalidAddress")
     );
@@ -649,6 +656,7 @@ describe("League", () => {
         creator.account.address, oracle.account.address, devWalletClient.account.address,
         600n, 500n, // 6% + 5% = 11% > 10%
         { token: token.address, entryFee: 1n, maxEntries: 0n, maxEntriesPerWallet: 0n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime: lt },
+        ...LEAGUE_DISPUTE_DISABLED,
       ]),
       (err: Error) => err.message.includes("InvalidParams")
     );

@@ -325,4 +325,46 @@ describe("OracleController", () => {
       );
     });
   });
+
+  describe("overrideResults (Epic 7)", () => {
+    it("owner replaces posted rankings and emits ResultsOverridden", async () => {
+      const { oracleController, oracle, owner, otherAccounts, connection } = await deployOracleController();
+      const rankings = makeRankings(otherAccounts);
+      await oracleController.write.postResults([1, rankings], { account: oracle.account });
+
+      const alt = [
+        otherAccounts[3].account.address,
+        otherAccounts[2].account.address,
+        otherAccounts[1].account.address,
+        otherAccounts[0].account.address,
+      ] as const;
+
+      const txHash = await oracleController.write.overrideResults([1, alt], { account: owner.account });
+      const publicClient = await connection.viem.getPublicClient();
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      const evs = await oracleController.getEvents.ResultsOverridden(
+        {},
+        { fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber }
+      );
+      assert.equal(evs.length, 1);
+
+      const stored = await oracleController.read.getResults([1]);
+      assert.deepEqual(
+        stored.map((a: string) => a.toLowerCase()),
+        alt.map((a) => a.toLowerCase())
+      );
+    });
+
+    it("non-owner cannot overrideResults", async () => {
+      const { oracleController, oracle, otherAccounts } = await deployOracleController();
+      const rankings = makeRankings(otherAccounts);
+      await oracleController.write.postResults([2, rankings], { account: oracle.account });
+      const attacker = otherAccounts[0];
+      await assert.rejects(
+        oracleController.simulate.overrideResults([2, rankings], { account: attacker.account }),
+        (err: Error) => err.message.includes("OwnableUnauthorizedAccount")
+      );
+    });
+  });
 });

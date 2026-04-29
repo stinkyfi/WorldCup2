@@ -45,6 +45,15 @@ contract League is ReentrancyGuard {
     address public immutable creator;
     address public immutable oracleController;
     address public immutable devWallet;
+
+    /// @notice USDC (or configured token) held as dispute deposit escrow (Epic 7). Zero = disputes disabled.
+    address public immutable disputeDepositToken;
+
+    /// @notice Deposit amount in `disputeDepositToken` smallest units (e.g. 50e6 for USDC).
+    uint256 public immutable disputeDepositAmount;
+
+    /// @notice Platform admin that may settle disputes on-chain and trigger league-wide refunds.
+    address public immutable refundAuthority;
     uint256 public immutable devFeeBps;
     uint256 public immutable creatorFeeCap;
     address public immutable token;
@@ -74,7 +83,20 @@ contract League is ReentrancyGuard {
     uint256 public merkleRootSetAt;
     mapping(bytes32 => bool) private _claimed;
 
+    /// @notice Recorded disputes awaiting admin resolution (deposit escrow when applicable).
+    struct Dispute {
+        address disputant;
+        uint8 groupId;
+        bool isCreator;
+        bool settled;
+    }
+
+    Dispute[] private _disputes;
+
     // ─── Events ──────────────────────────────────────────────────────────────
+
+    /// @notice Emitted when a player or creator files an on-chain dispute (Epic 7).
+    event DisputeFiled(address indexed disputant, uint8 indexed groupId, bool isCreator);
 
     event EntrySubmitted(address indexed player, bytes32 commitmentHash);
     event EntryRevised(address indexed player, uint256 indexed entryIndex, bytes32 commitmentHash, uint256 feePaid);
@@ -104,6 +126,9 @@ contract League is ReentrancyGuard {
     error InvalidParams();
     error RevisionsLocked();
     error InvalidEntryIndex();
+    error DisputesDisabled();
+    error DisputeAlreadySettled();
+    error InvalidDispute();
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -113,7 +138,10 @@ contract League is ReentrancyGuard {
         address devWallet_,
         uint256 devFeeBps_,
         uint256 creatorFeeCap_,
-        LeagueParams memory params
+        LeagueParams memory params,
+        address disputeDepositToken_,
+        uint256 disputeDepositAmount_,
+        address refundAuthority_
     ) {
         if (creator_ == address(0)) revert InvalidAddress();
         if (oracleController_ == address(0)) revert InvalidAddress();
@@ -133,6 +161,15 @@ contract League is ReentrancyGuard {
         revisionFee = params.revisionFee;
         revisionPolicy = params.revisionPolicy;
         lockTime = params.lockTime;
+
+        disputeDepositToken = disputeDepositToken_;
+        disputeDepositAmount = disputeDepositAmount_;
+        refundAuthority = refundAuthority_;
+    }
+
+    modifier onlyRefundAuthority() {
+        if (msg.sender != refundAuthority) revert NotAuthorized();
+        _;
     }
 
     // ─── Entry ───────────────────────────────────────────────────────────────
@@ -195,6 +232,75 @@ contract League is ReentrancyGuard {
         if (state != LeagueState.Active) revert LeagueNotActive();
         if (minThreshold == 0) return;
         if (totalEntries >= minThreshold) revert ThresholdMet();
+        state = LeagueState.Refunding;
+        emit LeagueRefunding();
+    }
+
+    /// @notice Number of disputes filed for this league (Epic 7).
+    function disputeCount() external view returns (uint256) {
+        return _disputes.length;
+    }
+
+    /// @notice View a dispute slot by index (matches event ordering).
+    function disputeAt(uint256 disputeId)
+        external
+        view
+        returns (address disputant, uint8 groupId, bool isCreator, bool settled)
+    {
+        Dispute storage d = _disputes[disputeId];
+        return (d.disputant, d.groupId, d.isCreator, d.settled);
+    }
+
+    /// @notice File an on-chain dispute while payouts are not yet finalized (`merkleRoot` unset).
+    /// @param groupId Disputed World Cup group index (0–11).
+    /// @param isCreatorDispute True when the league creator files — no deposit taken.
+    function fileDispute(uint8 groupId, bool isCreatorDispute) external nonReentrant {
+        if (disputeDepositToken == address(0)) revert DisputesDisabled();
+        if (state != LeagueState.Active || merkleRoot != bytes32(0)) revert LeagueNotActive();
+        if (block.timestamp < lockTime) revert LeagueLocked();
+
+        if (msg.sender != creator && _walletEntryCount[msg.sender] == 0) revert NotAuthorized();
+
+        if (isCreatorDispute) {
+            if (msg.sender != creator) revert NotAuthorized();
+        } else {
+            IERC20(disputeDepositToken).safeTransferFrom(msg.sender, address(this), disputeDepositAmount);
+        }
+
+        _disputes.push(
+            Dispute({disputant: msg.sender, groupId: groupId, isCreator: isCreatorDispute, settled: false})
+        );
+
+        emit DisputeFiled(msg.sender, groupId, isCreatorDispute);
+    }
+
+    /// @notice Close a dispute returning the player's escrow to them (goodwill / valid challenge).
+    function dismissDisputeRefundDeposit(uint256 disputeId) external nonReentrant onlyRefundAuthority {
+        if (disputeId >= _disputes.length) revert InvalidDispute();
+        Dispute storage d = _disputes[disputeId];
+        if (d.disputant == address(0)) revert InvalidDispute();
+        if (d.settled) revert DisputeAlreadySettled();
+        d.settled = true;
+        if (!d.isCreator) {
+            IERC20(disputeDepositToken).safeTransfer(d.disputant, disputeDepositAmount);
+        }
+    }
+
+    /// @notice Close a dispute sending the escrow to the dev wallet (bad faith).
+    function dismissDisputeConfiscate(uint256 disputeId) external nonReentrant onlyRefundAuthority {
+        if (disputeId >= _disputes.length) revert InvalidDispute();
+        Dispute storage d = _disputes[disputeId];
+        if (d.disputant == address(0)) revert InvalidDispute();
+        if (d.settled) revert DisputeAlreadySettled();
+        if (d.isCreator) revert InvalidDispute();
+        d.settled = true;
+        IERC20(disputeDepositToken).safeTransfer(devWallet, disputeDepositAmount);
+    }
+
+    /// @notice Trigger threshold-free refunds after oracle/dispute escalation (Epic 7).
+    function triggerRefund() external nonReentrant onlyRefundAuthority {
+        if (state != LeagueState.Active) revert LeagueNotActive();
+        if (merkleRoot != bytes32(0)) revert MerkleRootAlreadySet();
         state = LeagueState.Refunding;
         emit LeagueRefunding();
     }

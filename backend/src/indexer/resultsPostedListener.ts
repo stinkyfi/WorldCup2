@@ -3,7 +3,7 @@ import { prisma } from "../db.js";
 import { assignCompetitionRanks, rankEntriesWithTiebreaker } from "./tiebreaker.js";
 import { computeGroupScore } from "./scoring.js";
 import { createPublicClient, getAddress, http, type Address } from "viem";
-import { oracleControllerAbi } from "../lib/oracleControllerAbi.js";
+import { oracleResultsEvents } from "../lib/oracleControllerAbi.js";
 
 function mustGetEnv(name: string): string {
   const v = process.env[name];
@@ -49,7 +49,7 @@ export async function runResultsPostedIndexerOnce(params?: { chainId?: number })
 
     const logs = await publicClient.getLogs({
       address: controller,
-      event: oracleControllerAbi[0] as never,
+      events: oracleResultsEvents,
       fromBlock: state.lastProcessedBlock + 1n,
       toBlock: latest,
     });

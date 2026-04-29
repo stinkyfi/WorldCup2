@@ -107,6 +107,13 @@ export async function deployLeagueFactory() {
 
 const DEFAULT_ENTRY_FEE = 5_000_000_000_000_000_000n; // 5 tokens (18-decimal)
 
+/** Epic 7 dispute escrow disabled — zero token / zero amount / zero refund authority */
+export const LEAGUE_DISPUTE_DISABLED = [
+  "0x0000000000000000000000000000000000000000" as `0x${string}`,
+  0n,
+  "0x0000000000000000000000000000000000000000" as `0x${string}`,
+] as const;
+
 export async function deployLeague() {
   const connection = await hre.network.getOrCreate();
   const [owner, devWalletClient, creator, oracle, player1, player2, ...rest] =
@@ -141,6 +148,7 @@ export async function deployLeague() {
     200n,  // devFeeBps = 2%
     300n,  // creatorFeeCap = 3%
     params,
+    ...LEAGUE_DISPUTE_DISABLED,
   ]);
 
   return {

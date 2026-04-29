@@ -35,6 +35,9 @@ contract OracleController is Ownable {
     /// @param rankings The 4 team addresses ranked 1st–4th.
     event ResultsPosted(uint8 indexed groupId, address[4] rankings);
 
+    /// @notice Emitted when the owner replaces oracle-posted rankings for a group (Epic 7 disputes).
+    event ResultsOverridden(uint8 indexed groupId, address[4] rankings);
+
     /// @notice Emitted when an admin extends the grace period for a group.
     /// @param groupId The group index.
     /// @param newDeadline The updated deadline timestamp.
@@ -119,6 +122,16 @@ contract OracleController is Ownable {
         _results[groupId] = rankings;
         _resultsPosted[groupId] = true;
         emit ResultsPosted(groupId, rankings);
+    }
+
+    /// @notice Replace rankings for a group after oracle posting (dispute resolution).
+    /// @dev Callable only by owner. Updates stored rankings even if already posted.
+    /// @param groupId The group index (0–11).
+    /// @param rankings Corrected 4 team addresses ranked 1st–4th.
+    function overrideResults(uint8 groupId, address[4] calldata rankings) external onlyOwner {
+        _results[groupId] = rankings;
+        _resultsPosted[groupId] = true;
+        emit ResultsOverridden(groupId, rankings);
     }
 
     /// @notice Extend the grace period deadline for a group by adding additional seconds.

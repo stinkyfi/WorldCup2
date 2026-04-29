@@ -50,6 +50,15 @@ contract LeagueFactory is Ownable, ReentrancyGuard {
     /// @notice When true, createLeague reverts for all callers until unpaused by owner.
     bool public creationsPaused;
 
+    /// @notice Snapshot into each new League — USDC-style dispute deposit token (Epic 7).
+    address public disputeDepositToken;
+
+    /// @notice Snapshot into each new League — dispute deposit amount (token decimals).
+    uint256 public disputeDepositAmount;
+
+    /// @notice Snapshot into each new League — admin for refunds / dispute settlement on-chain.
+    address public refundAuthority;
+
     // ─── Registry ────────────────────────────────────────────────────────────
 
     /// @dev Ordered list of all deployed league addresses (append-only).
@@ -76,6 +85,9 @@ contract LeagueFactory is Ownable, ReentrancyGuard {
 
     /// @notice Emitted when the owner updates the OracleController address.
     event OracleControllerUpdated(address indexed newOracle);
+
+    /// @notice Emitted when dispute escrow parameters change (future leagues only).
+    event DisputeConfigUpdated(address indexed token, uint256 amount, address indexed refundAuthority_);
 
     // ─── Custom errors ───────────────────────────────────────────────────────
 
@@ -156,7 +168,10 @@ contract LeagueFactory is Ownable, ReentrancyGuard {
             devWallet,
             devFeeBps,
             creatorFeeCap,
-            params
+            params,
+            disputeDepositToken,
+            disputeDepositAmount,
+            refundAuthority
         );
         league = address(newLeague);
         _leagues.push(league);
@@ -207,6 +222,17 @@ contract LeagueFactory is Ownable, ReentrancyGuard {
         if (registry_ == address(0)) revert InvalidAddress();
         whitelistRegistry = registry_;
         emit WhitelistRegistryUpdated(registry_);
+    }
+
+    /// @notice Configure dispute deposits for leagues deployed after this call (Epic 7).
+    /// @param token_ ERC-20 used for dispute escrow (typically bridged USDC). Zero disables filing.
+    /// @param amount_ Deposit amount in token smallest units.
+    /// @param refundAuthority_ Address that may settle disputes and trigger refunds on each League.
+    function setDisputeConfig(address token_, uint256 amount_, address refundAuthority_) external onlyOwner {
+        disputeDepositToken = token_;
+        disputeDepositAmount = amount_;
+        refundAuthority = refundAuthority_;
+        emit DisputeConfigUpdated(token_, amount_, refundAuthority_);
     }
 
     /// @notice Point the factory at a new OracleController deployment.

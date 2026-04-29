@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { keccak256, encodePacked } from "viem";
 import hre from "hardhat";
-import { deployLeagueFactory } from "./fixtures/index.js";
+import { deployLeagueFactory, LEAGUE_DISPUTE_DISABLED } from "./fixtures/index.js";
 
 type Hex = `0x${string}`;
 
@@ -47,6 +47,7 @@ describe("Story 1.6 — security & edge cases", () => {
         revisionPolicy: 0,
         lockTime,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
 
     await token.write.approve([league.address, entryFee], { account: player1.account });
@@ -100,6 +101,7 @@ describe("Story 1.6 — security & edge cases", () => {
         revisionPolicy: 0,
         lockTime,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
 
     await token.write.approve([league.address, entryFee], { account: player1.account });
@@ -245,6 +247,7 @@ describe("Story 1.6 — security & edge cases", () => {
           revisionPolicy: 0,
           lockTime: lt + 86400n,
         },
+        ...LEAGUE_DISPUTE_DISABLED,
       ]),
       (err: Error) => err.message.includes("InvalidAddress")
     );
@@ -274,6 +277,7 @@ describe("Story 1.6 — security & edge cases", () => {
           revisionPolicy: 0,
           lockTime: lt + 86400n,
         },
+        ...LEAGUE_DISPUTE_DISABLED,
       ]),
       (err: Error) => err.message.includes("InvalidAddress")
     );
@@ -304,6 +308,7 @@ describe("Story 1.6 — security & edge cases", () => {
         revisionPolicy: 0,
         lockTime,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     await token.write.approve([league.address, entryFee], { account: player1.account });
     await league.write.enter([`0x${"ab".repeat(32)}` as Hex], { account: player1.account });
@@ -340,6 +345,7 @@ describe("Story 1.6 — security & edge cases", () => {
         revisionPolicy: 0,
         lockTime,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     await token.write.approve([league.address, entryFee * 2n], { account: player1.account });
     await advanceToTimestamp(lockTime - 400_000n);
@@ -377,6 +383,7 @@ describe("Story 1.6 — security & edge cases", () => {
         revisionPolicy: 0,
         lockTime,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     await token.write.approve([league.address, entryFee], { account: player1.account });
     await league.write.enter([`0x${"ab".repeat(32)}` as Hex], { account: player1.account });
@@ -409,6 +416,7 @@ describe("Story 1.6 — security & edge cases", () => {
         revisionPolicy: 0,
         lockTime,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     await token.write.approve([league.address, entryFee], { account: player1.account });
     await league.write.enter([`0x${"ab".repeat(32)}` as Hex], { account: player1.account });
@@ -445,6 +453,7 @@ describe("Story 1.6 — security & edge cases", () => {
         revisionPolicy: 0,
         lockTime,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     const root = `0x${"ee".repeat(32)}` as Hex;
     await league.write.setMerkleRoot([root], { account: devWalletClient.account });
@@ -477,6 +486,7 @@ describe("Story 1.6 — security & edge cases", () => {
         revisionPolicy: 0,
         lockTime: now + 86400n * 7n,
       },
+      ...LEAGUE_DISPUTE_DISABLED,
     ]);
     await assert.rejects(
       league.simulate.claimFee([1n, []], { account: creator.account }),
