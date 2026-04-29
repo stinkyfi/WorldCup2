@@ -11,7 +11,7 @@ import { CreateLeagueWizardPage } from "@/pages/CreateLeagueWizardPage";
 import { LeagueCreatorDashboardPage } from "@/pages/LeagueCreatorDashboardPage";
 import { LeagueDetailPage } from "@/pages/LeagueDetailPage";
 import { LeagueEntryPage } from "@/pages/LeagueEntryPage";
-import { LeagueClaimPlaceholderPage } from "@/pages/LeagueClaimPlaceholderPage";
+import { LeagueClaimPage } from "@/pages/LeagueClaimPage";
 import { LeagueLeaderboardPage } from "@/pages/LeagueLeaderboardPage";
 import { LeaguePredictPage } from "@/pages/LeaguePredictPage";
 import { MyLeaguesPlaceholderPage } from "@/pages/MyLeaguesPlaceholderPage";
@@ -28,7 +28,7 @@ export function AppRoutes() {
           path="/league/:address/claim"
           element={
             <RequireSiwe>
-              <LeagueClaimPlaceholderPage />
+              <LeagueClaimPage />
             </RequireSiwe>
           }
         />

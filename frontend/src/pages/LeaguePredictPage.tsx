@@ -433,7 +433,7 @@ export function LeaguePredictPage() {
         </Card>
 
         {submitCommitment ? (
-          <div className="mt-6 rounded-lg border border-primary/40 bg-primary/5 p-4 text-sm">
+          <div className="dd-callout mt-6 p-4">
             <p className="font-medium text-foreground">Predictions ready</p>
             <p className="mt-1 text-muted-foreground">
               Commitment hash: <code className="rounded bg-muted px-1">{submitCommitment}</code>

@@ -15,15 +15,19 @@ export function LeagueCard({ league, spotlight }: LeagueCardProps) {
   const card = (
     <Card
       className={cn(
-        "flex h-full flex-col transition-shadow",
-        spotlight ? "border-primary/50 shadow-md" : clickable ? "hover:border-border/80 hover:shadow-sm" : "",
+        "flex h-full flex-col transition-all duration-300",
+        spotlight
+          ? "border-accent/35 shadow-[0_0_40px_-12px_rgba(104,74,188,0.45)]"
+          : clickable
+            ? "hover:border-accent/25 hover:shadow-[0_12px_40px_-20px_rgba(0,0,0,0.5)]"
+            : "",
       )}
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="line-clamp-2 text-lg leading-snug">{league.title}</CardTitle>
           {spotlight ? (
-            <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+            <span className="shrink-0 rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent">
               Featured
             </span>
           ) : null}
@@ -57,7 +61,9 @@ export function LeagueCard({ league, spotlight }: LeagueCardProps) {
     return (
       <Link
         to={`/league/${league.contractAddress}`}
-        className={cn("block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}
+        className={cn(
+          "block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        )}
         aria-label={`Open league ${league.title}`}
       >
         {card}

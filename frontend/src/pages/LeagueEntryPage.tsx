@@ -30,9 +30,6 @@ function isAddress(s: string): boolean {
 const ZERO_MERKLE_ROOT =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
 
-/** Until Epic 8 exposes Merkle eligibility, show Claim CTA for ranks in this band (inclusive). */
-const PLACEHOLDER_PRIZE_RANK_CAP = 10;
-
 function ResolvedEntrySection(props: {
   leagueAddressRaw: string;
   leagueChainId: number;
@@ -126,11 +123,6 @@ function ResolvedEntrySection(props: {
     }
   }
 
-  const showClaimCta =
-    typeof rowForEntry?.rank === "number" &&
-    rowForEntry.rank >= 1 &&
-    rowForEntry.rank <= PLACEHOLDER_PRIZE_RANK_CAP;
-
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -165,8 +157,11 @@ function ResolvedEntrySection(props: {
           </button>
         </div>
       ) : rowsMine.length === 0 ? (
-        <div className="rounded-md border border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">
-          No entry found for your wallet in this league (or scores are still being indexed).
+        <div className="space-y-4 rounded-md border border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">
+          <p>No entry found for your wallet in this league (or scores are still being indexed).</p>
+          <Button type="button" variant="secondary" className="min-h-11" asChild>
+            <Link to={`/league/${leagueAddressRaw}/claim`}>Prize claim page</Link>
+          </Button>
         </div>
       ) : (
         <Card className="border-border bg-card/40">
@@ -179,11 +174,9 @@ function ResolvedEntrySection(props: {
               <Button type="button" variant="secondary" className="min-h-11" onClick={() => void onShareResult()}>
                 Share result
               </Button>
-              {showClaimCta ? (
-                <Button type="button" className="min-h-11" asChild>
-                  <Link to={`/league/${leagueAddressRaw}/claim`}>Claim prize</Link>
-                </Button>
-              ) : null}
+              <Button type="button" className="min-h-11" asChild>
+                <Link to={`/league/${leagueAddressRaw}/claim`}>Claim prize</Link>
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-6 text-sm">
@@ -605,7 +598,7 @@ export function LeagueEntryPage() {
           </dl>
 
           {entrySuccess ? (
-            <div className="rounded-md border border-primary/40 bg-primary/5 p-4 text-sm">
+            <div className="dd-callout p-4">
               <p className="font-medium text-foreground">Entry submitted</p>
               <p className="mt-1 text-muted-foreground">
                 Commitment hash: <code className="rounded bg-muted px-1">{entrySuccess.commitmentHash}</code>

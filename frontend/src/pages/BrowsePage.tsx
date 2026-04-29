@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { browseChainsForFilter, fetchLeagueBrowse } from "@/lib/leagueBrowse";
 
 const selectClass =
-  "h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-11 w-full min-w-0 rounded-lg border border-input bg-surface/90 px-3 text-sm text-foreground shadow-inner shadow-black/20 transition-colors focus-visible:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 function browseParamsFromSearch(search: URLSearchParams): URLSearchParams {
   const p = new URLSearchParams();
@@ -60,16 +60,25 @@ export function BrowsePage() {
   const isEmpty = !query.isLoading && !query.isError && featured.length === 0 && leagues.length === 0;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Browse leagues</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <header className="relative mb-10">
+        <div
+          className="pointer-events-none absolute -left-8 -top-6 h-32 w-32 rounded-full bg-primary/20 blur-3xl"
+          aria-hidden
+        />
+        <h1 className="font-display relative text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          Browse leagues
+        </h1>
+        <p className="relative mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
           Public leagues from the indexer API. Filter by chain, entry token, and fee; sort by date, pool size, or
           entries. No wallet required.
         </p>
       </header>
 
-      <section aria-label="Filters" className="mb-10 flex flex-col gap-4 rounded-lg border border-border bg-card/40 p-4 sm:p-6">
+      <section
+        aria-label="Filters"
+        className="mb-10 flex flex-col gap-4 rounded-xl border border-border/80 bg-card/50 p-4 shadow-[0_0_40px_-18px_rgba(104,74,188,0.2)] backdrop-blur-sm sm:p-6"
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
             Chain
@@ -150,7 +159,10 @@ export function BrowsePage() {
       {query.isLoading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading leagues">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-64 animate-pulse rounded-lg border border-border bg-muted/40" />
+            <div
+              key={i}
+              className="h-64 animate-pulse rounded-xl border border-primary/10 bg-gradient-to-b from-muted/50 to-muted/20"
+            />
           ))}
         </div>
       ) : null}
@@ -168,7 +180,7 @@ export function BrowsePage() {
       ) : null}
 
       {isEmpty ? (
-        <div className="rounded-lg border border-border bg-muted/30 px-6 py-12 text-center">
+        <div className="rounded-xl border border-border/80 bg-card/40 px-6 py-12 text-center shadow-inner shadow-black/20">
           <p className="text-lg font-medium text-foreground">No leagues match these filters</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Try choosing &quot;All chains&quot;, removing the token filter, or widening the fee range.
@@ -185,7 +197,11 @@ export function BrowsePage() {
         <>
           {featured.length > 0 ? (
             <section className="mb-10" aria-labelledby="featured-heading">
-              <h2 id="featured-heading" className="mb-4 text-lg font-semibold text-foreground">
+              <h2
+                id="featured-heading"
+                className="font-display mb-4 flex items-center gap-2 text-lg font-bold tracking-tight text-foreground"
+              >
+                <span className="h-6 w-1 shrink-0 rounded-full bg-gradient-to-b from-primary to-accent" aria-hidden />
                 Featured
               </h2>
               <div className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
@@ -200,7 +216,11 @@ export function BrowsePage() {
 
           {leagues.length > 0 ? (
             <section aria-labelledby="all-heading">
-              <h2 id="all-heading" className="mb-4 text-lg font-semibold text-foreground">
+              <h2
+                id="all-heading"
+                className="font-display mb-4 flex items-center gap-2 text-lg font-bold tracking-tight text-foreground"
+              >
+                <span className="h-6 w-1 shrink-0 rounded-full bg-gradient-to-b from-accent to-primary" aria-hidden />
                 {featured.length > 0 ? "All leagues" : "Leagues"}
               </h2>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

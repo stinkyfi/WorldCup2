@@ -20,5 +20,6 @@ export const leagueAbi = parseAbi([
   "event EntryRevised(address indexed player, uint256 indexed entryIndex, bytes32 commitmentHash, uint256 feePaid)",
   "function checkThreshold()",
   "function claimRefund()",
+  "function claimPrize(uint256 amount, bytes32[] proof)",
 ]);
 

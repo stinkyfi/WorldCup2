@@ -269,7 +269,7 @@ export function AdminOraclePage() {
             {extendBusy ? "Extending…" : "Extend grace"}
           </Button>
           {extendHash ? (
-            <div className="w-full rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
+            <div className="dd-callout w-full p-3">
               Grace extended. Tx: <code className="rounded bg-muted px-1">{extendHash}</code>
             </div>
           ) : null}
@@ -315,7 +315,7 @@ export function AdminOraclePage() {
           </div>
 
           {txHash ? (
-            <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
+            <div className="dd-callout p-3">
               Posted. Tx: <code className="rounded bg-muted px-1">{txHash}</code>
             </div>
           ) : null}

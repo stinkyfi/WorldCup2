@@ -57,11 +57,11 @@ export function IdentityDisplay({ address, className }: Props) {
         <img
           src={avatar}
           alt=""
-          className="size-8 shrink-0 rounded-full border border-border bg-muted object-cover"
+          className="size-8 shrink-0 rounded-full border border-accent/25 bg-muted object-cover shadow-[0_0_16px_-4px_rgba(104,74,188,0.35)]"
         />
       ) : (
         <div
-          className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted font-mono text-xs text-muted-foreground"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full border border-accent/20 bg-gradient-to-br from-primary/25 to-muted font-mono text-xs text-accent"
           aria-hidden
         >
           {address.slice(2, 4).toUpperCase()}

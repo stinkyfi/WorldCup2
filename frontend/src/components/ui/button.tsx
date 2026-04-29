@@ -4,20 +4,22 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 min-h-11 min-w-11 px-4",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 min-h-11 min-w-11 px-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        secondary: "bg-surface text-foreground border border-border hover:bg-surface/80",
-        ghost: "hover:bg-surface/60",
-        link: "text-primary underline-offset-4 hover:underline min-h-11 min-w-auto px-2",
+        default:
+          "relative overflow-hidden bg-gradient-to-br from-[#5a3cb8] via-primary to-[#8b6ae6] text-primary-foreground shadow-[0_0_36px_-10px_rgba(104,74,188,0.85)] hover:brightness-110 hover:shadow-[0_0_44px_-6px_rgba(10,238,235,0.35)] active:scale-[0.98]",
+        secondary:
+          "border border-accent/25 bg-surface/90 text-foreground shadow-none hover:border-accent/50 hover:bg-surface hover:shadow-[0_0_28px_-10px_rgba(10,238,235,0.22)]",
+        ghost: "text-foreground hover:bg-accent/[0.07] hover:text-accent",
+        link: "text-accent underline-offset-4 hover:underline min-h-11 min-w-auto px-2 font-medium",
       },
       size: {
         default: "h-11 px-4 py-2",
-        sm: "h-11 rounded-md px-3",
-        lg: "h-12 rounded-md px-8",
-        icon: "h-11 w-11 shrink-0 p-0",
+        sm: "h-11 rounded-lg px-3",
+        lg: "h-12 rounded-lg px-8 text-base",
+        icon: "h-11 w-11 shrink-0 rounded-lg p-0",
       },
     },
     defaultVariants: {

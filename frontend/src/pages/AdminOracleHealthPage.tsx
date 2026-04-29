@@ -109,7 +109,9 @@ export function AdminOracleHealthPage() {
                       key={g.groupId}
                       className={[
                         "rounded-md border px-2 py-2 text-center text-xs",
-                        ok ? "border-emerald-600/40 bg-emerald-500/10 text-emerald-200" : "border-destructive/40 bg-destructive/10 text-destructive",
+                        ok
+                          ? "border-accent/35 bg-accent/10 text-accent"
+                          : "border-destructive/40 bg-destructive/10 text-destructive",
                       ].join(" ")}
                       title={
                         ok

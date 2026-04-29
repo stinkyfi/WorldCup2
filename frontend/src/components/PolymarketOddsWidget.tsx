@@ -39,7 +39,9 @@ export function PolymarketOddsWidget({ className }: { className?: string }) {
             Stale
           </span>
         ) : (
-          <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">Live</span>
+          <span className="rounded-full border border-accent/30 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
+            Live
+          </span>
         )}
       </div>
 

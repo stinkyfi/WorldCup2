@@ -331,7 +331,7 @@ export function CreateLeagueWizardPage() {
             key={n}
             className={cn(
               "rounded-md border px-2 py-2 text-center sm:text-sm",
-              step === n ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card/40",
+              step === n ? "border-accent/40 bg-primary/15 text-foreground shadow-[0_0_24px_-12px_rgba(104,74,188,0.35)]" : "border-border bg-card/40",
             )}
           >
             {n}. {stepLabels[n - 1]}
@@ -370,7 +370,7 @@ export function CreateLeagueWizardPage() {
                   key={c.chainId}
                   className={cn(
                     "flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors min-h-11",
-                    chainId === c.chainId ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40",
+                    chainId === c.chainId ? "border-accent/35 bg-primary/10" : "border-border hover:bg-muted/40",
                   )}
                 >
                   <input
@@ -491,7 +491,7 @@ export function CreateLeagueWizardPage() {
                   key={opt.id}
                   className={cn(
                     "flex cursor-pointer flex-col gap-1 rounded-lg border px-4 py-3 min-h-11",
-                    revision === opt.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40",
+                    revision === opt.id ? "border-accent/35 bg-primary/10" : "border-border hover:bg-muted/40",
                   )}
                 >
                   <span className="flex items-center gap-2">
@@ -647,7 +647,7 @@ export function CreateLeagueWizardPage() {
               className={cn(
                 "rounded-md border px-3 py-2 text-sm",
                 toast.kind === "success"
-                  ? "border-primary/50 bg-primary/10 text-foreground"
+                  ? "border-accent/40 bg-primary/15 text-foreground shadow-[0_0_28px_-14px_rgba(10,238,235,0.15)]"
                   : "border-destructive/50 bg-destructive/10 text-destructive",
               )}
               role="status"

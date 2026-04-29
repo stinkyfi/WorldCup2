@@ -199,7 +199,7 @@ export function LeagueDetailPage() {
         <div
           className={
             refundToast.kind === "success"
-              ? "mb-6 rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-foreground"
+              ? "dd-callout mb-6"
               : "mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
           }
           role="status"
@@ -209,7 +209,7 @@ export function LeagueDetailPage() {
       ) : null}
 
       {created && validAddress && !query.isLoading && !query.isError ? (
-        <div className="mb-6 rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-foreground" role="status">
+        <div className="dd-callout mb-6" role="status">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="font-medium">League created</p>
@@ -276,7 +276,10 @@ export function LeagueDetailPage() {
       ) : null}
 
       {query.isLoading ? (
-        <div className="rounded-lg border border-border bg-muted/30 px-6 py-12" role="status">
+        <div
+          className="rounded-xl border border-border/80 bg-card/40 px-6 py-12 text-muted-foreground shadow-inner shadow-black/20"
+          role="status"
+        >
           Loading league…
         </div>
       ) : null}
@@ -292,13 +295,15 @@ export function LeagueDetailPage() {
 
       {!query.isLoading && !query.isError && league ? (
         <>
-          <header className="mb-8 flex flex-col gap-4 rounded-lg border border-border bg-card/40 p-6">
+          <header className="mb-8 flex flex-col gap-4 rounded-xl border border-border/80 bg-card/50 p-6 shadow-[0_0_48px_-20px_rgba(104,74,188,0.25)] backdrop-blur-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-3xl font-semibold tracking-tight text-foreground">{league.title}</h1>
+                  <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                    {league.title}
+                  </h1>
                   {league.isFeatured ? (
-                    <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">
+                    <span className="rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
                       Featured
                     </span>
                   ) : null}

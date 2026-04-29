@@ -18,8 +18,10 @@ const BASE_NAV_LINKS = [
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "rounded-md px-4 py-3 text-sm font-medium transition-colors min-h-11 inline-flex items-center",
-    isActive ? "bg-background/50 text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
+    "rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-200 min-h-11 inline-flex items-center",
+    isActive
+      ? "bg-primary/20 text-accent shadow-[inset_0_0_0_1px_rgba(10,238,235,0.25)]"
+      : "text-muted-foreground hover:bg-accent/[0.06] hover:text-foreground",
   );
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -36,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { siweError, clearSiweError } = useSiweAuthUi();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+    <div className="flex min-h-screen flex-col bg-transparent font-sans text-foreground">
       {siweError ? (
         <div
           className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-center text-sm text-destructive"
@@ -48,12 +50,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       ) : null}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur supports-backdrop-filter:bg-surface/80">
+      <header className="sticky top-0 z-40 border-b border-accent/15 bg-surface/90 shadow-[0_12px_40px_-20px_rgba(0,0,0,0.55)] backdrop-blur-md supports-backdrop-filter:bg-surface/75">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Link
             to="/"
             aria-label="DegenDraft home"
-            className="flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-foreground"
+            className="flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-95"
           >
             <img
               src="/DegenDraft.png"
@@ -61,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               width={176}
               height={40}
               decoding="async"
-              className="h-9 w-auto max-h-10 max-w-[min(100%,11rem)] object-contain object-left sm:h-10 sm:max-h-11 sm:max-w-52"
+              className="h-9 w-auto max-h-10 max-w-[min(100%,11rem)] object-contain object-left drop-shadow-[0_0_12px_rgba(104,74,188,0.35)] sm:h-10 sm:max-h-11 sm:max-w-52"
             />
           </Link>
 
@@ -94,10 +97,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Button>
               </Dialog.Trigger>
               <Dialog.Portal>
-                <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
-                <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-[min(100%,20rem)] flex-col border-l border-border bg-surface p-4 shadow-xl outline-none">
+                <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
+                <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-[min(100%,20rem)] flex-col border-l border-accent/20 bg-surface/98 p-4 shadow-[0_0_60px_-12px_rgba(104,74,188,0.45)] outline-none backdrop-blur-xl">
                   <div className="mb-4 flex items-center justify-between">
-                    <Dialog.Title className="text-lg font-semibold">Menu</Dialog.Title>
+                    <Dialog.Title className="font-display text-lg font-semibold tracking-tight">Menu</Dialog.Title>
                     <Dialog.Close asChild>
                       <Button type="button" variant="ghost" size="icon" aria-label="Close menu">
                         <X className="size-6" aria-hidden />
@@ -110,7 +113,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       <Dialog.Close asChild key={link.to}>
                         <NavLink
                           to={link.to}
-                          className="flex min-h-11 min-w-11 items-center rounded-md px-4 py-3 text-base font-medium text-foreground hover:bg-background/50"
+                          className="flex min-h-11 min-w-11 items-center rounded-lg px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-primary/15 hover:text-accent"
                         >
                           {link.label}
                         </NavLink>

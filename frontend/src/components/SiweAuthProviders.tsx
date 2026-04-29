@@ -22,7 +22,7 @@ const queryClient = new QueryClient({
 });
 
 const broadcastTheme = darkTheme({
-  accentColor: "#3b82f6",
+  accentColor: "#684abc",
   accentColorForeground: "#ffffff",
   borderRadius: "medium",
 });

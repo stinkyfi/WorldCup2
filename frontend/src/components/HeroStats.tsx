@@ -9,9 +9,13 @@ type Props = {
 
 function StatSkeleton({ label }: { label: string }) {
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4" aria-busy="true" aria-label={`${label} loading`}>
-      <div className="mb-2 h-3 w-24 animate-pulse rounded bg-muted-foreground/20" />
-      <div className="h-8 w-32 animate-pulse rounded bg-muted-foreground/25" />
+    <div
+      className="rounded-xl border border-border/80 bg-card/50 p-4 shadow-inner shadow-black/20"
+      aria-busy="true"
+      aria-label={`${label} loading`}
+    >
+      <div className="mb-2 h-3 w-24 animate-pulse rounded bg-accent/10" />
+      <div className="h-8 w-32 animate-pulse rounded bg-primary/15" />
     </div>
   );
 }
@@ -19,11 +23,11 @@ function StatSkeleton({ label }: { label: string }) {
 function StatBlock({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className="rounded-lg border border-border bg-card p-4 shadow-sm"
+      className="group rounded-xl border border-primary/20 bg-gradient-to-b from-card/90 to-card/40 p-4 shadow-[0_0_36px_-18px_rgba(104,74,188,0.25),inset_0_1px_0_0_rgba(255,255,255,0.05)] transition-[border-color,box-shadow] duration-300 hover:border-accent/35 hover:shadow-[0_0_40px_-14px_rgba(10,238,235,0.18)]"
       aria-label={label}
     >
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="font-mono text-2xl font-semibold tabular-nums text-accent">{value}</p>
     </div>
   );
 }
@@ -33,7 +37,7 @@ export function HeroStats({ data, isLoading, isError }: Props) {
     return (
       <div
         role="alert"
-        className="rounded-lg border border-red-500/30 bg-card p-4 text-sm text-red-400"
+        className="rounded-xl border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive shadow-[0_0_28px_-12px_rgba(248,113,113,0.35)]"
       >
         Could not load platform stats. Is the API running?
       </div>

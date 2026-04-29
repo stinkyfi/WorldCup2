@@ -14,11 +14,20 @@ export function LeaderboardBreakdownGrid(props: {
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {groups.map((g) => (
-          <div key={g.groupId} className="rounded-md border border-border bg-background/40 p-3">
+          <div
+            key={g.groupId}
+            className="rounded-lg border border-border/80 bg-card/30 p-3 shadow-inner shadow-black/10 transition-colors hover:border-accent/20"
+          >
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-foreground">{g.groupLabel}</div>
-              <div className="text-xs text-muted-foreground">
-                {g.status === "pending" ? "Pending" : g.status === "posted" ? "Posted" : "—"}
+              <div className="text-sm font-semibold text-foreground">{g.groupLabel}</div>
+              <div className="text-xs font-medium text-muted-foreground">
+                {g.status === "pending" ? (
+                  <span className="text-muted-foreground">Pending</span>
+                ) : g.status === "posted" ? (
+                  <span className="text-accent">Posted</span>
+                ) : (
+                  "—"
+                )}
               </div>
             </div>
             <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
