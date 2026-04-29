@@ -9,9 +9,15 @@ export type PolymarketOddsResponse = {
   };
 };
 
-export async function fetchPolymarketOdds(signal?: AbortSignal): Promise<PolymarketOddsResponse> {
-  const res = await fetch(apiUrl("/api/v1/polymarket/odds"), {
-    signal,
+export async function fetchPolymarketOdds(params?: {
+  group?: string;
+  signal?: AbortSignal;
+}): Promise<PolymarketOddsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.group) qs.set("group", params.group);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const res = await fetch(apiUrl(`/api/v1/polymarket/odds${suffix}`), {
+    signal: params?.signal,
     headers: { Accept: "application/json" },
   });
   if (!res.ok) {

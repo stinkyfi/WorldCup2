@@ -21,5 +21,15 @@ export const leagueAbi = parseAbi([
   "function checkThreshold()",
   "function claimRefund()",
   "function claimPrize(uint256 amount, bytes32[] proof)",
+  "function creator() view returns (address)",
+  "function fileDispute(uint8 groupId, bool isCreatorDispute)",
+  "function disputeDepositToken() view returns (address)",
+  "function disputeDepositAmount() view returns (uint256)",
+  "function disputeCount() view returns (uint256)",
+  "function disputeAt(uint256 disputeId) view returns (address disputant, uint8 groupId, bool isCreator, bool settled)",
+  "function dismissDisputeRefundDeposit(uint256 disputeId)",
+  "function dismissDisputeConfiscate(uint256 disputeId)",
+  "function triggerRefund()",
+  "function oracleController() view returns (address)",
 ]);
 

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-26
-last_updated: 2026-04-28
+last_updated: 2026-04-30
 project: DegenDraft
 project_key: NOKEY
 tracking_system: file-system
@@ -123,10 +123,10 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 7: Disputes
   # ─────────────────────────────────────────────────────────────
-  epic-7: backlog
-  7-1-player-and-creator-dispute-filing: backlog
-  7-2-admin-dispute-review-panel: backlog
-  7-3-admin-dispute-resolution-actions: backlog
+  epic-7: in-progress
+  7-1-player-and-creator-dispute-filing: done
+  7-2-admin-dispute-review-panel: done
+  7-3-admin-dispute-resolution-actions: review
   epic-7-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────

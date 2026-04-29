@@ -12,7 +12,7 @@ import { sendError, sendSuccess } from "../../lib/envelope.js";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const querySchema = z.object({
-  // Placeholder for future: specific market ids, etc.
+  // World Cup group letter (A-L). When provided, we proxy Polymarket Gamma events for that group.
   group: z.string().optional(),
 });
 
@@ -22,21 +22,36 @@ type Cached = {
   data: unknown;
 };
 
-let cache: Cached | null = null;
+const cacheByGroup = new Map<string, Cached>();
 
-async function fetchPolymarketSnapshot(): Promise<Cached> {
-  // Default: return empty payload so the widget can hide gracefully until real market mapping is wired.
-  // If POLYMARKET_ODDS_URL is provided, we will proxy it and cache the raw JSON.
-  const url = process.env.POLYMARKET_ODDS_URL?.trim();
+function gammaUrlForGroupLetter(letter: string): string {
+  const g = letter.trim().toLowerCase();
+  return `https://gamma-api.polymarket.com/events?slug=fifa-world-cup-group-${g}-winner`;
+}
+
+async function fetchPolymarketSnapshot(params: { group?: string | null }): Promise<Cached> {
+  // If POLYMARKET_ODDS_URL is provided, we will proxy it (legacy/override).
+  // Otherwise, if group is provided, proxy the Polymarket Gamma API for that group.
+  const urlOverride = process.env.POLYMARKET_ODDS_URL?.trim();
   const now = Date.now();
-  if (!url) {
+  if (urlOverride) {
+    const r = await fetch(urlOverride, { headers: { accept: "application/json" } });
+    if (!r.ok) throw new Error(`Polymarket fetch failed: ${r.status}`);
+    const data = (await r.json()) as unknown;
+    return { fetchedAtMs: now, asOfIso: new Date(now).toISOString(), data };
+  }
+
+  const group = params.group?.trim().toUpperCase() ?? null;
+  if (!group) {
     return { fetchedAtMs: now, asOfIso: new Date(now).toISOString(), data: { markets: [] } };
   }
-
-  const r = await fetch(url, { headers: { accept: "application/json" } });
-  if (!r.ok) {
-    throw new Error(`Polymarket fetch failed: ${r.status}`);
+  if (!/^[A-L]$/.test(group)) {
+    throw new Error(`Invalid group "${group}"`);
   }
+
+  const url = gammaUrlForGroupLetter(group);
+  const r = await fetch(url, { headers: { accept: "application/json" } });
+  if (!r.ok) throw new Error(`Polymarket fetch failed: ${r.status}`);
   const data = (await r.json()) as unknown;
   return { fetchedAtMs: now, asOfIso: new Date(now).toISOString(), data };
 }
@@ -45,15 +60,19 @@ export const polymarketRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get("/polymarket/odds", async (request, reply) => {
     const parsed = querySchema.safeParse(request.query ?? {});
     if (!parsed.success) throw parsed.error;
+    const group = parsed.data.group?.trim().toUpperCase() ?? null;
+    const cacheKey = group ?? "__default__";
 
     const now = Date.now();
+    const cache = cacheByGroup.get(cacheKey) ?? null;
     if (cache && now - cache.fetchedAtMs < CACHE_TTL_MS) {
       return sendSuccess(reply, { asOf: cache.asOfIso, ttlSeconds: Math.floor(CACHE_TTL_MS / 1000), data: cache.data });
     }
 
     try {
-      cache = await fetchPolymarketSnapshot();
-      return sendSuccess(reply, { asOf: cache.asOfIso, ttlSeconds: Math.floor(CACHE_TTL_MS / 1000), data: cache.data });
+      const fresh = await fetchPolymarketSnapshot({ group });
+      cacheByGroup.set(cacheKey, fresh);
+      return sendSuccess(reply, { asOf: fresh.asOfIso, ttlSeconds: Math.floor(CACHE_TTL_MS / 1000), data: fresh.data });
     } catch (e) {
       // If we have stale cache, serve it and mark stale. Otherwise return error.
       if (cache) {

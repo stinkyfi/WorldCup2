@@ -11,7 +11,7 @@ function hoursSince(iso: string): number | null {
 export function PolymarketOddsWidget({ className }: { className?: string }) {
   const q = useQuery({
     queryKey: ["polymarket-odds"],
-    queryFn: ({ signal }) => fetchPolymarketOdds(signal),
+    queryFn: ({ signal }) => fetchPolymarketOdds({ signal }),
     staleTime: 60_000,
     retry: 0,
   });

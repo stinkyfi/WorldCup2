@@ -1,4 +1,22 @@
 import type { LeaderboardBreakdownGroup } from "@/lib/leaderboard";
+import { TeamKeyWithFlag } from "@/components/TeamWithFlag";
+
+function InlineTeamList(props: { teamKeys: readonly (string | null)[] }) {
+  const { teamKeys } = props;
+  return (
+    <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
+      {teamKeys.map((k, i) =>
+        k ? (
+          <TeamKeyWithFlag key={`${k}-${i}`} teamKey={k} />
+        ) : (
+          <span key={`unknown-${i}`} className="text-muted-foreground">
+            ?
+          </span>
+        ),
+      )}
+    </span>
+  );
+}
 
 export function LeaderboardBreakdownGrid(props: {
   tiebreakerTotalGoals: number | null | undefined;
@@ -33,12 +51,20 @@ export function LeaderboardBreakdownGrid(props: {
             <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
               <div>
                 Predicted:{" "}
-                <span className="text-foreground">{g.predicted ? g.predicted.join(", ") : "—"}</span>
+                <span className="text-foreground">
+                  {g.predicted ? <InlineTeamList teamKeys={g.predicted} /> : "—"}
+                </span>
               </div>
               <div>
                 Actual:{" "}
                 <span className="text-foreground">
-                  {g.actual ? g.actual.map((x) => x ?? "?").join(", ") : g.status === "pending" ? "Pending" : "—"}
+                  {g.actual ? (
+                    <InlineTeamList teamKeys={g.actual} />
+                  ) : g.status === "pending" ? (
+                    "Pending"
+                  ) : (
+                    "—"
+                  )}
                 </span>
               </div>
               <div>

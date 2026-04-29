@@ -12,4 +12,13 @@ export const leagueAbi = parseAbi([
   "function devFeeBps() view returns (uint256)",
   "function creatorFeeCap() view returns (uint256)",
   "function setMerkleRoot(bytes32 root)",
+  "function lockTime() view returns (uint256)",
+  "function disputeDepositToken() view returns (address)",
+  "function disputeDepositAmount() view returns (uint256)",
+  "function disputeCount() view returns (uint256)",
+  "function disputeAt(uint256 disputeId) view returns (address disputant, uint8 groupId, bool isCreator, bool settled)",
+  "function dismissDisputeRefundDeposit(uint256 disputeId)",
+  "function dismissDisputeConfiscate(uint256 disputeId)",
+  "function triggerRefund()",
+  "event DisputeFiled(address indexed disputant, uint8 indexed groupId, bool isCreator)",
 ]);

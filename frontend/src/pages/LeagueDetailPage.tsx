@@ -13,6 +13,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { IdentityDisplay } from "@/components/IdentityDisplay";
+import { LeagueDisputePanel } from "@/components/LeagueDisputePanel";
 import { Button } from "@/components/ui/button";
 import { leagueAbi } from "@/lib/leagueAbi";
 import { chainLabel } from "@/lib/leagueBrowse";
@@ -423,6 +424,14 @@ export function LeagueDetailPage() {
               </div>
             </div>
           </section>
+
+          {leagueAddr && leagueChainId ? (
+            <LeagueDisputePanel
+              chainId={leagueChainId}
+              leagueAddress={leagueAddr}
+              creatorAddressFromApi={league.creatorAddress}
+            />
+          ) : null}
 
           <div className="flex justify-start">
             <Button type="button" variant="secondary" asChild className="min-h-11">

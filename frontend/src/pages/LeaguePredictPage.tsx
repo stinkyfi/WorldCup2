@@ -7,8 +7,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { type ReactNode, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { type Address, getAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -27,7 +27,10 @@ import {
 import { erc20Abi } from "@/lib/erc20Abi";
 import { leagueAbi } from "@/lib/leagueAbi";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
+import { fetchPolymarketOdds } from "@/lib/polymarketOdds";
+import { extractPolymarketWinOddsByTeamName, formatPolymarketPercent } from "@/lib/polymarketTeamWinOdds";
 import { WORLD_CUP_GROUPS, type WorldCupGroupId } from "@/lib/worldCupGroups";
+import { TeamNameWithFlag } from "@/components/TeamWithFlag";
 import { cn } from "@/lib/utils";
 import { wagmiConfig } from "@/wagmi";
 
@@ -47,9 +50,11 @@ function initState(): GroupOrderState {
 function SortableTeamRow({
   id,
   label,
+  right,
 }: {
   id: string;
-  label: string;
+  label: ReactNode;
+  right?: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -65,7 +70,10 @@ function SortableTeamRow({
       {...listeners}
     >
       <span className="font-medium text-foreground">{label}</span>
-      <span className="text-xs text-muted-foreground">Drag</span>
+      <span className="ml-auto flex items-center gap-3">
+        {right ? <span className="text-xs text-muted-foreground">{right}</span> : null}
+        <span className="text-xs text-muted-foreground">Drag</span>
+      </span>
     </div>
   );
 }
@@ -149,9 +157,34 @@ export function LeaguePredictPage() {
   const tiebreakerFilled = /^\d+$/.test(tiebreaker.trim()) && Number(tiebreaker.trim()) >= 1 && Number(tiebreaker.trim()) <= 1000;
   const canSubmit = completedGroups === 12 && tiebreakerFilled;
 
+  const polymarketQueries = useQueries({
+    queries: WORLD_CUP_GROUPS.map((g) => ({
+      queryKey: ["polymarket-odds", g.id],
+      queryFn: ({ signal }: { signal: AbortSignal }) => fetchPolymarketOdds({ group: g.id, signal }),
+      staleTime: 60_000,
+      retry: 0,
+    })),
+  });
+
+  const polymarketByGroupId = useMemo(() => {
+    const out = new Map<WorldCupGroupId, { asOf: string; stale: boolean; percentByTeamName: Map<string, number> }>();
+    for (let i = 0; i < WORLD_CUP_GROUPS.length; i++) {
+      const g = WORLD_CUP_GROUPS[i]!;
+      const q = polymarketQueries[i];
+      if (!q?.data) continue;
+      try {
+        out.set(g.id, extractPolymarketWinOddsByTeamName(q.data));
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+    return out;
+  }, [polymarketQueries]);
+
   const mobileGroup = WORLD_CUP_GROUPS[Math.min(WORLD_CUP_GROUPS.length - 1, Math.max(0, mobileStep))]!;
   const mobileOrder = orderByGroup[mobileGroup.id];
   const teamById = useMemo(() => new Map(mobileGroup.teams.map((t) => [t.id, t.name] as const)), [mobileGroup.teams]);
+  const mobilePolymarket = polymarketByGroupId.get(mobileGroup.id) ?? null;
 
   function setMobilePick(pos: 0 | 1 | 2 | 3, teamId: string) {
     setOrderByGroup((prev) => {
@@ -307,6 +340,14 @@ export function LeaguePredictPage() {
 
         <PolymarketOddsWidget className="mb-6" />
 
+        {polymarketByGroupId.size > 0 ? (
+          <div className="mb-4 text-xs text-muted-foreground">
+            Team win % values are{" "}
+            <span className="font-medium text-foreground">Polymarket statistics</span> (implied probability) and may be stale
+            depending on the market snapshot.
+          </div>
+        ) : null}
+
         {/* Mobile paginated selectors */}
         <div className="lg:hidden">
           <Card className="mb-4">
@@ -319,9 +360,27 @@ export function LeaguePredictPage() {
             <CardContent className="space-y-4">
               {[0, 1, 2, 3].map((pos) => (
                 <div key={pos} className="grid gap-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor={`pos-${pos}`}>
-                    Position {pos + 1}
-                  </label>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-sm font-medium text-foreground" htmlFor={`pos-${pos}`}>
+                      Position {pos + 1}
+                    </label>
+                    {mobileOrder[pos] ? (
+                      <span className="text-sm text-foreground">
+                        <span className="inline-flex items-center gap-2">
+                          <TeamNameWithFlag teamName={teamById.get(mobileOrder[pos]!) ?? mobileOrder[pos]!} />
+                          {mobilePolymarket
+                            ? (() => {
+                                const name = teamById.get(mobileOrder[pos]!) ?? mobileOrder[pos]!;
+                                const pct = mobilePolymarket.percentByTeamName.get(name);
+                                return typeof pct === "number" && Number.isFinite(pct) ? (
+                                  <span className="text-xs text-muted-foreground">Polymarket: {formatPolymarketPercent(pct)}</span>
+                                ) : null;
+                              })()
+                            : null}
+                        </span>
+                      </span>
+                    ) : null}
+                  </div>
                   <select
                     id={`pos-${pos}`}
                     className="min-h-11 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -330,6 +389,7 @@ export function LeaguePredictPage() {
                   >
                     {mobileGroup.teams.map((t) => (
                       <option key={t.id} value={t.id}>
+                        {/* Native <option> doesn't support reliable image/icons; keep plain team name. */}
                         {teamById.get(t.id) ?? t.id}
                       </option>
                     ))}
@@ -395,7 +455,22 @@ export function LeaguePredictPage() {
                         <div key={id} className="flex items-center gap-2">
                           <span className="w-6 text-xs font-mono text-muted-foreground">{idx + 1}</span>
                           <div className="flex-1">
-                            <SortableTeamRow id={id} label={teamById.get(id) ?? id} />
+                            <SortableTeamRow
+                              id={id}
+                              label={<TeamNameWithFlag teamName={teamById.get(id) ?? id} />}
+                              right={(() => {
+                                const pm = polymarketByGroupId.get(g.id);
+                                if (!pm) return undefined;
+                                const name = teamById.get(id) ?? id;
+                                const pct = pm.percentByTeamName.get(name);
+                                if (typeof pct !== "number" || !Number.isFinite(pct)) return undefined;
+                                return (
+                                  <span title="Polymarket win % (implied probability)">
+                                    Polymarket: {formatPolymarketPercent(pct)}
+                                  </span>
+                                );
+                              })()}
+                            />
                           </div>
                         </div>
                       ))}

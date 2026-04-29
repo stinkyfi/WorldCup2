@@ -17,6 +17,9 @@ export function AdminPlaceholderPage() {
           <Link to="/admin/oracle/health">Oracle health</Link>
         </Button>
         <Button type="button" variant="secondary" asChild className="min-h-11">
+          <Link to="/admin/disputes">Disputes</Link>
+        </Button>
+        <Button type="button" variant="secondary" asChild className="min-h-11">
           <Link to="/">Back to home</Link>
         </Button>
       </div>
