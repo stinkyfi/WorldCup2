@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { HeroStats } from "@/components/HeroStats";
+import { HowItWorksSection } from "@/components/HowItWorksSection";
 import { fetchPlatformStats } from "@/lib/platformStats";
 
 export function LandingPage() {
@@ -92,6 +93,7 @@ export function LandingPage() {
       <HeroStats data={statsQuery.data} isLoading={statsQuery.isLoading} isError={statsQuery.isError} />
       </div>
       
+      <HowItWorksSection />
     </div>
   );
 }

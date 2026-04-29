@@ -7,15 +7,15 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { type Address, getAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
+import { ArrowLeft, ArrowRight, CheckCircle2, GripVertical, MousePointer2, Sparkles, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PolymarketOddsWidget } from "@/components/PolymarketOddsWidget";
 import { PredictionProgressBar } from "@/components/PredictionProgressBar";
 import {
   createEntryId,
@@ -63,16 +63,30 @@ function SortableTeamRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex min-h-11 items-center justify-between rounded-md border border-border bg-background/40 px-3 py-2 text-sm",
-        isDragging ? "opacity-70" : "",
+        "group flex min-h-11 items-center gap-2 rounded-lg border border-border/70 bg-background/35 px-3 py-2 text-sm shadow-inner shadow-black/10 transition-colors",
+        "hover:border-accent/30 hover:bg-background/45",
+        "cursor-grab active:cursor-grabbing",
+        isDragging ? "opacity-70 ring-1 ring-accent/35" : "",
       )}
       {...attributes}
       {...listeners}
+      title="Drag to reorder"
     >
-      <span className="font-medium text-foreground">{label}</span>
-      <span className="ml-auto flex items-center gap-3">
-        {right ? <span className="text-xs text-muted-foreground">{right}</span> : null}
-        <span className="text-xs text-muted-foreground">Drag</span>
+      <span
+        className="flex items-center gap-2 text-muted-foreground"
+        aria-label="Drag handle"
+        title="Drag handle"
+      >
+        <GripVertical className="size-4 opacity-75 transition-opacity group-hover:opacity-100" />
+      </span>
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="min-w-0 truncate font-medium text-foreground">{label}</span>
+        {right ? <span className="hidden text-xs text-muted-foreground md:inline-flex">{right}</span> : null}
+      </span>
+      <span className="ml-auto hidden items-center gap-2 text-xs text-muted-foreground md:flex">
+        <MousePointer2 className="size-3.5" />
+        <span className="font-medium text-foreground/90">Drag</span>
+        <span>to rank</span>
       </span>
     </div>
   );
@@ -89,13 +103,14 @@ export function LeaguePredictPage() {
 
   const [orderByGroup, setOrderByGroup] = useState<GroupOrderState>(() => initState());
   const [tiebreaker, setTiebreaker] = useState<string>("");
-  const [mobileStep, setMobileStep] = useState<number>(0);
   const [confirmedGroups, setConfirmedGroups] = useState<Set<WorldCupGroupId>>(() => new Set());
   const [submitCommitment, setSubmitCommitment] = useState<`0x${string}` | null>(null);
   const [entryId] = useState<string>(() => entryIdFromUrl ?? createEntryId());
   const [reviseBusy, setReviseBusy] = useState<null | "approving" | "revising">(null);
   const [reviseError, setReviseError] = useState<string | null>(null);
   const [reviseSuccess, setReviseSuccess] = useState(false);
+  const [wizardStage, setWizardStage] = useState<"intro" | "groups" | "tiebreaker">("intro");
+  const [wizardGroupIdx, setWizardGroupIdx] = useState<number>(0);
 
   const validAddress = isValidAddress ? address : null;
   const leagueQuery = useQuery({
@@ -157,51 +172,33 @@ export function LeaguePredictPage() {
   const tiebreakerFilled = /^\d+$/.test(tiebreaker.trim()) && Number(tiebreaker.trim()) >= 1 && Number(tiebreaker.trim()) <= 1000;
   const canSubmit = completedGroups === 12 && tiebreakerFilled;
 
-  const polymarketQueries = useQueries({
-    queries: WORLD_CUP_GROUPS.map((g) => ({
-      queryKey: ["polymarket-odds", g.id],
-      queryFn: ({ signal }: { signal: AbortSignal }) => fetchPolymarketOdds({ group: g.id, signal }),
-      staleTime: 60_000,
-      retry: 0,
-    })),
+  const currentGroup = WORLD_CUP_GROUPS[Math.min(WORLD_CUP_GROUPS.length - 1, Math.max(0, wizardGroupIdx))]!;
+  const currentOrder = orderByGroup[currentGroup.id];
+  const currentTeamById = useMemo(
+    () => new Map(currentGroup.teams.map((t) => [t.id, t.name] as const)),
+    [currentGroup.teams],
+  );
+  const currentConfirmed = confirmedGroups.has(currentGroup.id);
+
+  const polymarketQuery = useQuery({
+    queryKey: ["polymarket-odds", currentGroup.id],
+    queryFn: ({ signal }) => fetchPolymarketOdds({ group: currentGroup.id, signal }),
+    staleTime: 60_000,
+    retry: 0,
+    enabled: wizardStage === "groups",
   });
 
-  const polymarketByGroupId = useMemo(() => {
-    const out = new Map<WorldCupGroupId, { asOf: string; stale: boolean; percentByTeamName: Map<string, number> }>();
-    for (let i = 0; i < WORLD_CUP_GROUPS.length; i++) {
-      const g = WORLD_CUP_GROUPS[i]!;
-      const q = polymarketQueries[i];
-      if (!q?.data) continue;
-      try {
-        out.set(g.id, extractPolymarketWinOddsByTeamName(q.data));
-      } catch {
-        /* ignore parse errors */
-      }
+  const polymarketForGroup = useMemo(() => {
+    if (!polymarketQuery.data) return null;
+    try {
+      return extractPolymarketWinOddsByTeamName(polymarketQuery.data);
+    } catch {
+      return null;
     }
-    return out;
-  }, [polymarketQueries]);
+  }, [polymarketQuery.data]);
 
-  const mobileGroup = WORLD_CUP_GROUPS[Math.min(WORLD_CUP_GROUPS.length - 1, Math.max(0, mobileStep))]!;
-  const mobileOrder = orderByGroup[mobileGroup.id];
-  const teamById = useMemo(() => new Map(mobileGroup.teams.map((t) => [t.id, t.name] as const)), [mobileGroup.teams]);
-  const mobilePolymarket = polymarketByGroupId.get(mobileGroup.id) ?? null;
-
-  function setMobilePick(pos: 0 | 1 | 2 | 3, teamId: string) {
-    setOrderByGroup((prev) => {
-      const current = prev[mobileGroup.id];
-      const next = [...current];
-      // Keep choices unique by swapping if needed.
-      const otherIdx = next.indexOf(teamId);
-      if (otherIdx !== -1) {
-        const tmp = next[pos];
-        next[pos] = teamId;
-        next[otherIdx] = tmp;
-      } else {
-        next[pos] = teamId;
-      }
-      return { ...prev, [mobileGroup.id]: next };
-    });
-    setConfirmedGroups((prev) => new Set(prev).add(mobileGroup.id));
+  function confirmCurrentGroup() {
+    setConfirmedGroups((prev) => new Set(prev).add(currentGroup.id));
   }
 
   if (!isValidAddress) {
@@ -315,174 +312,208 @@ export function LeaguePredictPage() {
   }
 
   return (
-    <div>
+    <div className="relative">
       <PredictionProgressBar completedGroups={completedGroups} totalGroups={12} tiebreakerFilled={tiebreakerFilled} />
 
       <div className="mx-auto max-w-5xl px-4 py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Predictions</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Desktop drag-and-drop on large screens; mobile uses paginated selectors.
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl border border-accent/25 bg-accent/10">
+                <Swords className="size-5 text-accent" />
+              </span>
+              <div>
+                <h1 className="text-2xl font-semibold text-gradient-brand">Prediction Arena</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Rank each group’s teams 1–4. Drag on desktop; mobile uses selectors.
+                </p>
+              </div>
+            </div>
           </div>
           <Button type="button" variant="secondary" asChild className="min-h-11">
             <Link to={`/league/${address}`}>Back to league</Link>
           </Button>
         </div>
 
-        <div className="mb-6 hidden rounded-lg border border-border bg-card/40 p-4 text-sm text-muted-foreground lg:block">
-          Drag teams within each group to set positions 1–4.
-        </div>
-        <div className="mb-6 rounded-lg border border-border bg-card/40 p-4 text-sm text-muted-foreground lg:hidden">
-          Mobile: set positions using dropdowns. Swipe/paginate through groups A–L.
-        </div>
-
-        <PolymarketOddsWidget className="mb-6" />
-
-        {polymarketByGroupId.size > 0 ? (
-          <div className="mb-4 text-xs text-muted-foreground">
-            Team win % values are{" "}
-            <span className="font-medium text-foreground">Polymarket statistics</span> (implied probability) and may be stale
-            depending on the market snapshot.
+        {wizardStage === "intro" ? (
+          <div className="border-gradient-brand rounded-xl bg-card/40 p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent/95">Wizard</p>
+                <p className="font-display mt-1 text-xl font-semibold text-foreground">Draft your bracket, one group at a time</p>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  You’ll confirm each group A–L, then set the tiebreaker and submit. Want market odds? Check the homepage
+                  “Market intel” panel.
+                </p>
+              </div>
+              <Button
+                type="button"
+                className="min-h-11"
+                onClick={() => {
+                  setWizardStage("groups");
+                  setWizardGroupIdx(0);
+                }}
+              >
+                Start wizard
+              </Button>
+            </div>
           </div>
         ) : null}
 
-        {/* Mobile paginated selectors */}
-        <div className="lg:hidden">
-          <Card className="mb-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">
-                {mobileGroup.label} <span className="text-sm text-muted-foreground">({mobileStep + 1} / 12)</span>
-              </CardTitle>
-              <CardDescription>Select positions 1–4</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[0, 1, 2, 3].map((pos) => (
-                <div key={pos} className="grid gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-sm font-medium text-foreground" htmlFor={`pos-${pos}`}>
-                      Position {pos + 1}
-                    </label>
-                    {mobileOrder[pos] ? (
-                      <span className="text-sm text-foreground">
-                        <span className="inline-flex items-center gap-2">
-                          <TeamNameWithFlag teamName={teamById.get(mobileOrder[pos]!) ?? mobileOrder[pos]!} />
-                          {mobilePolymarket
-                            ? (() => {
-                                const name = teamById.get(mobileOrder[pos]!) ?? mobileOrder[pos]!;
-                                const pct = mobilePolymarket.percentByTeamName.get(name);
-                                return typeof pct === "number" && Number.isFinite(pct) ? (
-                                  <span className="text-xs text-muted-foreground">Polymarket: {formatPolymarketPercent(pct)}</span>
-                                ) : null;
-                              })()
-                            : null}
-                        </span>
-                      </span>
-                    ) : null}
-                  </div>
-                  <select
-                    id={`pos-${pos}`}
-                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    value={mobileOrder[pos] ?? ""}
-                    onChange={(e) => setMobilePick(pos as 0 | 1 | 2 | 3, e.target.value)}
-                  >
-                    {mobileGroup.teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {/* Native <option> doesn't support reliable image/icons; keep plain team name. */}
-                        {teamById.get(t.id) ?? t.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-
-              <div className="flex flex-wrap gap-2 pt-2">
+        {wizardStage === "groups" ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm text-muted-foreground">
+                Group <span className="font-semibold text-foreground">{currentGroup.id}</span> · Step{" "}
+                <span className="font-mono text-foreground">{wizardGroupIdx + 1}/12</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="secondary"
                   className="min-h-11"
-                  onClick={() => setMobileStep((s) => Math.max(0, s - 1))}
-                  disabled={mobileStep === 0}
+                  onClick={() => setWizardStage("intro")}
                 >
-                  Back
+                  Back to intro
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="min-h-11"
+                  onClick={() => setWizardGroupIdx((i) => Math.max(0, i - 1))}
+                  disabled={wizardGroupIdx === 0}
+                >
+                  <ArrowLeft className="mr-2 size-4" />
+                  Prev
                 </Button>
                 <Button
                   type="button"
                   className="min-h-11"
-                  onClick={() => setMobileStep((s) => Math.min(11, s + 1))}
-                  disabled={mobileStep === 11}
+                  onClick={() => {
+                    if (!currentConfirmed) confirmCurrentGroup();
+                    setWizardGroupIdx((i) => Math.min(11, i + 1));
+                  }}
+                  disabled={wizardGroupIdx === 11 && !currentConfirmed}
+                  title={!currentConfirmed && wizardGroupIdx === 11 ? "Confirm the last group to continue." : undefined}
                 >
                   Next
+                  <ArrowRight className="ml-2 size-4" />
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        {/* Desktop drag-and-drop */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={({ active, over }) => {
-            if (!over) return;
-            const activeId = String(active.id);
-            const overId = String(over.id);
-            if (activeId === overId) return;
-            const group = WORLD_CUP_GROUPS.find((g) => orderByGroup[g.id].includes(activeId));
-            if (!group) return;
-            const ids = orderByGroup[group.id];
-            const oldIndex = ids.indexOf(activeId);
-            const newIndex = ids.indexOf(overId);
-            if (oldIndex === -1 || newIndex === -1) return;
-            setOrderByGroup((prev) => ({ ...prev, [group.id]: arrayMove(prev[group.id], oldIndex, newIndex) }));
-            setConfirmedGroups((prev) => new Set(prev).add(group.id));
-          }}
-        >
-          <div className="hidden gap-4 lg:grid lg:grid-cols-2">
-            {WORLD_CUP_GROUPS.map((g) => {
-              const order = orderByGroup[g.id];
-              const teamById = new Map(g.teams.map((t) => [t.id, t.name] as const));
-              return (
-                <Card key={g.id}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">{g.label}</CardTitle>
-                    <CardDescription>Positions 1–4</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <SortableContext items={order} strategy={verticalListSortingStrategy}>
-                      {order.map((id, idx) => (
-                        <div key={id} className="flex items-center gap-2">
-                          <span className="w-6 text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                          <div className="flex-1">
-                            <SortableTeamRow
-                              id={id}
-                              label={<TeamNameWithFlag teamName={teamById.get(id) ?? id} />}
-                              right={(() => {
-                                const pm = polymarketByGroupId.get(g.id);
-                                if (!pm) return undefined;
-                                const name = teamById.get(id) ?? id;
-                                const pct = pm.percentByTeamName.get(name);
-                                if (typeof pct !== "number" || !Number.isFinite(pct)) return undefined;
-                                return (
-                                  <span title="Polymarket win % (implied probability)">
-                                    Polymarket: {formatPolymarketPercent(pct)}
-                                  </span>
-                                );
-                              })()}
-                            />
-                          </div>
+            <Card className="border-gradient-brand bg-card/40">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-lg">{currentGroup.label}</CardTitle>
+                    <CardDescription>
+                      Drag to set positions 1–4{" "}
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <GripVertical className="size-3.5" /> handle
+                      </span>
+                    </CardDescription>
+                  </div>
+                  <button
+                    type="button"
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                      currentConfirmed
+                        ? "border-accent/25 bg-accent/10 text-accent"
+                        : "border-border bg-background/35 text-muted-foreground hover:bg-background/50",
+                    )}
+                    onClick={() => confirmCurrentGroup()}
+                    title={currentConfirmed ? "Confirmed" : "Confirm group"}
+                  >
+                    <CheckCircle2 className="size-3.5" />
+                    {currentConfirmed ? "Confirmed" : "Confirm"}
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={({ active, over }) => {
+                    if (!over) return;
+                    const activeId = String(active.id);
+                    const overId = String(over.id);
+                    if (activeId === overId) return;
+                    const ids = currentOrder;
+                    const oldIndex = ids.indexOf(activeId);
+                    const newIndex = ids.indexOf(overId);
+                    if (oldIndex === -1 || newIndex === -1) return;
+                    setOrderByGroup((prev) => ({ ...prev, [currentGroup.id]: arrayMove(prev[currentGroup.id], oldIndex, newIndex) }));
+                    confirmCurrentGroup();
+                  }}
+                >
+                  <SortableContext items={currentOrder} strategy={verticalListSortingStrategy}>
+                    {currentOrder.map((id, idx) => (
+                      <div key={id} className="flex items-center gap-2">
+                        <span className="w-6 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                        <div className="flex-1">
+                          <SortableTeamRow
+                            id={id}
+                            label={<TeamNameWithFlag teamName={currentTeamById.get(id) ?? id} />}
+                            right={
+                              polymarketForGroup ? (
+                                (() => {
+                                  const name = currentTeamById.get(id) ?? id;
+                                  const pct = polymarketForGroup.percentByTeamName.get(name);
+                                  if (typeof pct !== "number" || !Number.isFinite(pct)) return <span>Polymarket: —</span>;
+                                  return (
+                                    <span title="Polymarket win % (implied probability)">
+                                      Polymarket: {formatPolymarketPercent(pct)}
+                                    </span>
+                                  );
+                                })()
+                              ) : polymarketQuery.isLoading ? (
+                                <span>Polymarket: …</span>
+                              ) : (
+                                <span>Polymarket: —</span>
+                              )
+                            }
+                          />
                         </div>
-                      ))}
-                    </SortableContext>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </DndContext>
+                      </div>
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </CardContent>
+            </Card>
 
-        <Card className="mt-6">
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                className="min-h-11"
+                onClick={() => setWizardStage("tiebreaker")}
+                disabled={confirmedGroups.size < 12}
+                title={confirmedGroups.size < 12 ? "Confirm all groups to continue." : undefined}
+              >
+                Continue to tiebreaker
+                <Sparkles className="ml-2 size-4" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {wizardStage === "tiebreaker" ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm text-muted-foreground">
+                Final step ·{" "}
+                <span className="font-medium text-foreground">
+                  {confirmedGroups.size}/12 groups confirmed
+                </span>
+              </div>
+              <Button type="button" variant="secondary" className="min-h-11" onClick={() => setWizardStage("groups")}>
+                Back to groups
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <Card className={cn("mt-6", wizardStage !== "tiebreaker" ? "opacity-60 pointer-events-none select-none" : "")}>
           <CardHeader>
             <CardTitle className="text-lg">Tiebreaker</CardTitle>
             <CardDescription>Predict total goals across all group stage matches (1–1000).</CardDescription>
