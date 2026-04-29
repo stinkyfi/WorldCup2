@@ -1,16 +1,6 @@
-import { useEffect, useState } from "react";
-import { createPublicClient, http, type Address } from "viem";
-import { mainnet } from "viem/chains";
+import type { Address } from "viem";
 import { cn } from "@/lib/utils";
-
-const mainnetClient = createPublicClient({
-  chain: mainnet,
-  transport: http(),
-});
-
-function shortAddress(addr: string) {
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
+import { useWalletPrimaryIdentity } from "@/hooks/useWalletPrimaryIdentity";
 
 type Props = {
   address: Address;
@@ -18,38 +8,11 @@ type Props = {
 };
 
 /**
- * FR3: Ethereum mainnet ENS name + avatar when resolvable; otherwise truncated address.
- * Basename (Base) / SNS (Sonic) can extend when resolvers are added to the app config.
+ * Navbar identity: Ethereum mainnet ENS + Base primary name (via universal resolver) when resolvable;
+ * otherwise truncated address.
  */
 export function IdentityDisplay({ address, className }: Props) {
-  const [label, setLabel] = useState(() => shortAddress(address));
-  const [avatar, setAvatar] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const name = await mainnetClient.getEnsName({ address });
-        if (cancelled) return;
-        if (name) {
-          setLabel(name);
-          const av = await mainnetClient.getEnsAvatar({ name });
-          if (!cancelled) setAvatar(av);
-        } else {
-          setLabel(shortAddress(address));
-          setAvatar(null);
-        }
-      } catch {
-        if (!cancelled) {
-          setLabel(shortAddress(address));
-          setAvatar(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [address]);
+  const { label, avatarUrl: avatar } = useWalletPrimaryIdentity(address);
 
   return (
     <div className={cn("flex min-w-0 max-w-[11rem] items-center gap-2", className)}>

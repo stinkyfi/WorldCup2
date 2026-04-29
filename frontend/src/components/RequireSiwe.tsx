@@ -1,6 +1,6 @@
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import type { ReactNode } from "react";
 import { useAccount } from "wagmi";
+import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { useSiweSession } from "@/lib/siweAuthContext";
 import { Button } from "@/components/ui/button";
 
@@ -32,7 +32,7 @@ export function RequireSiwe({ children }: { children: ReactNode }) {
           : "Connect your wallet, then approve the sign-in message when prompted."}
       </p>
       <div className="flex flex-col items-center gap-4">
-        <ConnectButton showBalance={false} />
+        <ConnectWalletButton />
         {isConnected ? (
           <p className="text-sm text-muted-foreground">
             If you dismissed the signature request, open your wallet menu and choose <strong>Sign in</strong> again.

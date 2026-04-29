@@ -26,18 +26,8 @@ const browseQuerySchema = z
   .object({
     chainId: z.string().optional(),
     entryToken: z.string().max(200).optional(),
-    minFeeWei: z.string().optional(),
-    maxFeeWei: z.string().optional(),
     sort: z.enum(["createdAt", "poolWei", "entryCount"]).optional(),
     order: z.enum(["asc", "desc"]).optional(),
-  })
-  .superRefine((o, ctx) => {
-    for (const key of ["minFeeWei", "maxFeeWei"] as const) {
-      const v = o[key];
-      if (v !== undefined && v.trim() !== "" && !/^\d+$/.test(v)) {
-        ctx.addIssue({ code: "custom", path: [key], message: "Must be decimal digits only" });
-      }
-    }
   })
   .transform((o) => {
     let chainId: number | undefined;
@@ -50,13 +40,9 @@ const browseQuerySchema = z
       }
     }
     const entryToken = o.entryToken?.trim() === "" ? undefined : o.entryToken?.trim();
-    const minFeeWei =
-      o.minFeeWei !== undefined && o.minFeeWei.trim() !== "" ? BigInt(o.minFeeWei.trim()) : undefined;
-    const maxFeeWei =
-      o.maxFeeWei !== undefined && o.maxFeeWei.trim() !== "" ? BigInt(o.maxFeeWei.trim()) : undefined;
     const sort = (o.sort ?? "createdAt") as BrowseSortKey;
     const order = o.order ?? "desc";
-    return { chainId, entryToken, minFeeWei, maxFeeWei, sort, order };
+    return { chainId, entryToken, sort, order };
   });
 
 function normalizeQuery(
@@ -265,8 +251,8 @@ export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
     if (!parsed.success) {
       throw parsed.error;
     }
-    const { chainId, entryToken, minFeeWei, maxFeeWei, sort, order } = parsed.data;
-    const where = buildLeagueBrowseWhere({ chainId, entryToken, minFeeWei, maxFeeWei });
+    const { chainId, entryToken, sort, order } = parsed.data;
+    const where = buildLeagueBrowseWhere({ chainId, entryToken });
     const rows = await prisma.league.findMany({ where });
     const { featured, leagues } = partitionBrowseRows(rows, sort, order);
     return sendSuccess(

@@ -1,10 +1,11 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Menu, X } from "lucide-react";
+import { useChainModal } from "@rainbow-me/rainbowkit";
+import { ChevronsUpDown, Menu, X } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { useAccount } from "wagmi";
-import { IdentityDisplay } from "@/components/IdentityDisplay";
+import { useChainId, useChains } from "wagmi";
+import { getChainIconSrc } from "@/lib/chainIcons";
+import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { useSiweAuthUi, useSiweSession } from "@/lib/siweAuthContext";
 import { Button } from "@/components/ui/button";
 import { useNavDrawer } from "@/stores/navDrawerStore";
@@ -24,11 +25,41 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
       : "text-muted-foreground hover:bg-accent/[0.06] hover:text-foreground",
   );
 
+function NavbarChainButton() {
+  const { openChainModal } = useChainModal();
+  const chainId = useChainId();
+  const chains = useChains();
+  const chain = chains.find((c) => c.id === chainId);
+
+  if (!openChainModal) return null;
+
+  const name = chain?.name ?? "Network";
+  const iconSrc = chain ? getChainIconSrc(chain) : undefined;
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      className="max-w-36 shrink-0 gap-2 px-2 sm:max-w-44"
+      onClick={openChainModal}
+      aria-label={`${name}. Switch network`}
+    >
+      {iconSrc ? (
+        <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted/40 ring-1 ring-accent/20">
+          <img src={iconSrc} alt="" className="size-7 object-cover" width={28} height={28} decoding="async" />
+        </span>
+      ) : null}
+      <span className="min-w-0 truncate text-xs font-semibold sm:text-sm">{name}</span>
+      <ChevronsUpDown className="size-4 shrink-0 opacity-60" aria-hidden />
+    </Button>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const open = useNavDrawer((s) => s.open);
   const setOpen = useNavDrawer((s) => s.setOpen);
-  const { address } = useAccount();
-  const { authStatus, me } = useSiweSession();
+  const { me } = useSiweSession();
   const navLinks = useMemo(() => {
     if (me?.isAdmin) {
       return [...BASE_NAV_LINKS, { to: "/admin" as const, label: "Admin" }];
@@ -53,37 +84,34 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-accent/15 bg-surface/90 shadow-[0_12px_40px_-20px_rgba(0,0,0,0.55)] backdrop-blur-md supports-backdrop-filter:bg-surface/75">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
-          <Link
-            to="/"
-            aria-label="DegenDraft home"
-            className="flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-95"
-          >
-            <img
-              src="/DegenDraft.png"
-              alt=""
-              width={176}
-              height={40}
-              decoding="async"
-              className="h-9 w-auto max-h-10 max-w-[min(100%,11rem)] object-contain object-left drop-shadow-[0_0_12px_rgba(104,74,188,0.35)] sm:h-10 sm:max-h-11 sm:max-w-52"
-            />
-          </Link>
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+            <Link
+              to="/"
+              aria-label="DegenDraft home"
+              className="flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-95"
+            >
+              <img
+                src="/DegenDraft.png"
+                alt=""
+                width={176}
+                height={40}
+                decoding="async"
+                className="h-9 w-auto max-h-10 max-w-[min(100%,11rem)] object-contain object-left drop-shadow-[0_0_12px_rgba(104,74,188,0.35)] sm:h-10 sm:max-h-11 sm:max-w-52"
+              />
+            </Link>
 
-          <nav
-            className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex"
-            aria-label="Primary"
-          >
-            {navLinks.map((link) => (
-              <NavLink key={link.to} to={link.to} className={navClass}>
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
+            <nav className="hidden min-w-0 items-center gap-1 lg:flex" aria-label="Primary">
+              {navLinks.map((link) => (
+                <NavLink key={link.to} to={link.to} className={navClass}>
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
 
-          <div className="ml-auto flex min-w-0 items-center gap-2">
-            {authStatus === "authenticated" && address ? (
-              <IdentityDisplay address={address} className="hidden sm:flex" />
-            ) : null}
-            <ConnectButton chainStatus="icon" showBalance={{ smallScreen: false, largeScreen: true }} />
+          <div className="flex shrink-0 items-center gap-2">
+            <ConnectWalletButton />
+            <NavbarChainButton />
             <Dialog.Root open={open} onOpenChange={setOpen}>
               <Dialog.Trigger asChild>
                 <Button

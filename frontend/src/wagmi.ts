@@ -34,17 +34,22 @@ const baseMainnet = defineChain({
 });
 
 /** Sonic mainnet — used with league creation wizard (Story 3.1 / 3.2). */
-export const sonicMainnet = defineChain({
-  id: 146,
-  name: "Sonic",
-  nativeCurrency: { decimals: 18, name: "Sonic", symbol: "S" },
-  rpcUrls: {
-    default: { http: ["https://rpc.soniclabs.com"] },
-  },
-  blockExplorers: {
-    default: { name: "SonicScan", url: "https://sonicscan.org" },
-  },
-});
+export const sonicMainnet = {
+  ...defineChain({
+    id: 146,
+    name: "Sonic",
+    nativeCurrency: { decimals: 18, name: "Sonic", symbol: "S" },
+    rpcUrls: {
+      default: { http: ["https://rpc.soniclabs.com"] },
+    },
+    blockExplorers: {
+      default: { name: "SonicScan", url: "https://sonicscan.org" },
+    },
+  }),
+  /** ethereum-lists icon (IPFS); copied to `public/chains/sonic.png` for reliable loading. */
+  iconUrl: "/chains/sonic.png",
+  iconBackground: "#0c0c10",
+};
 
 /**
  * RainbowKit + wagmi — Base Sepolia for local SIWE (Story 2.2) plus Base / Ethereum / Sonic

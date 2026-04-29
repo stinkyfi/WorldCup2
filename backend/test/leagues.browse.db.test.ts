@@ -83,17 +83,19 @@ test(
 );
 
 test(
-  "GET /api/v1/leagues/browse filters by fee range",
+  "GET /api/v1/leagues/browse filters by chain and entry token address",
   { skip: !RUN },
   async () => {
     const lock = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const tokenA = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const tokenB = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     await prisma.league.createMany({
       data: [
         {
           chainId: 84532,
-          title: `${prefix} low fee`,
-          entryTokenSymbol: "ETH",
-          entryTokenAddress: "0x0000000000000000000000000000000000000000",
+          title: `${prefix} token a`,
+          entryTokenSymbol: "AAA",
+          entryTokenAddress: tokenA,
           entryFeeWei: 5n,
           poolWei: 1n,
           entryCount: 0,
@@ -102,9 +104,9 @@ test(
         },
         {
           chainId: 84532,
-          title: `${prefix} high fee`,
-          entryTokenSymbol: "ETH",
-          entryTokenAddress: "0x0000000000000000000000000000000000000000",
+          title: `${prefix} token b`,
+          entryTokenSymbol: "BBB",
+          entryTokenAddress: tokenB,
           entryFeeWei: 500n,
           poolWei: 2n,
           entryCount: 0,
@@ -116,12 +118,12 @@ test(
     const app = await createApp();
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/leagues/browse?minFeeWei=0&maxFeeWei=100",
+      url: `/api/v1/leagues/browse?chainId=84532&entryToken=${tokenA}`,
     });
     assert.equal(res.statusCode, 200);
     const body = JSON.parse(res.body) as { data: { leagues: { title: string }[] } };
     assert.equal(body.data.leagues.length, 1);
-    assert.ok(body.data.leagues[0]!.title.includes("low fee"));
+    assert.ok(body.data.leagues[0]!.title.includes("token a"));
     await app.close();
   },
 );

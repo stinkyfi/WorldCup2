@@ -57,8 +57,11 @@ test("sortMain by poolWei desc", () => {
   assert.deepEqual(sorted.map((x) => x.id), ["h", "l"]);
 });
 
-test("buildLeagueBrowseWhere composes chain and fee", () => {
-  const w = buildLeagueBrowseWhere({ chainId: 84532, minFeeWei: 10n, maxFeeWei: 100n });
+test("buildLeagueBrowseWhere composes chain and entry token address", () => {
+  const w = buildLeagueBrowseWhere({
+    chainId: 84532,
+    entryToken: "0x1111111111111111111111111111111111111111",
+  });
   assert.ok("AND" in w && Array.isArray(w.AND));
   assert.equal(w.AND?.length, 2);
 });

@@ -1,63 +1,104 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useChainId } from "wagmi";
 import { LeagueCard } from "@/components/LeagueCard";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { browseChainsForFilter, fetchLeagueBrowse } from "@/lib/leagueBrowse";
+import { CREATE_LEAGUE_CHAINS } from "@/lib/createLeagueChains";
+import {
+  buildLeagueBrowseSearchParams,
+  chainLabel,
+  fetchLeagueBrowse,
+} from "@/lib/leagueBrowse";
+import { fetchWhitelistedTokens } from "@/lib/fetchWhitelistedTokens";
 
 const selectClass =
   "h-11 w-full min-w-0 rounded-lg border border-input bg-surface/90 px-3 text-sm text-foreground shadow-inner shadow-black/20 transition-colors focus-visible:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-function browseParamsFromSearch(search: URLSearchParams): URLSearchParams {
-  const p = new URLSearchParams();
-  const chainId = search.get("chainId");
-  if (chainId && chainId.trim() !== "") p.set("chainId", chainId.trim());
-  const entryToken = search.get("entryToken");
-  if (entryToken && entryToken.trim() !== "") p.set("entryToken", entryToken.trim());
-  const minFeeWei = search.get("minFeeWei");
-  if (minFeeWei && minFeeWei.trim() !== "") p.set("minFeeWei", minFeeWei.trim());
-  const maxFeeWei = search.get("maxFeeWei");
-  if (maxFeeWei && maxFeeWei.trim() !== "") p.set("maxFeeWei", maxFeeWei.trim());
-  const sort = search.get("sort");
-  if (sort && sort !== "createdAt") p.set("sort", sort);
-  const order = search.get("order");
-  if (order && order !== "desc") p.set("order", order);
-  return p;
-}
+const WHITELIST_QUERY_CHAIN_IDS = new Set<number>(CREATE_LEAGUE_CHAINS.map((c) => c.chainId));
 
 export function BrowsePage() {
+  const chainId = useChainId();
   const [search, setSearch] = useSearchParams();
-  const apiParams = useMemo(() => browseParamsFromSearch(search), [search]);
+  const prevChainId = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (prevChainId.current !== undefined && prevChainId.current !== chainId) {
+      setSearch(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("entryToken");
+          return next;
+        },
+        { replace: true },
+      );
+    }
+    prevChainId.current = chainId;
+  }, [chainId, setSearch]);
+
+  useEffect(() => {
+    if (WHITELIST_QUERY_CHAIN_IDS.has(chainId)) return;
+    setSearch(
+      (prev) => {
+        if (!prev.get("entryToken")) return prev;
+        const next = new URLSearchParams(prev);
+        next.delete("entryToken");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [chainId, setSearch]);
+
+  const filters = useMemo(
+    () => ({
+      entryToken: search.get("entryToken") ?? undefined,
+      sort: search.get("sort") ?? undefined,
+      order: search.get("order") ?? undefined,
+    }),
+    [search],
+  );
+
+  const apiParams = useMemo(() => buildLeagueBrowseSearchParams(chainId, filters), [chainId, filters]);
 
   const query = useQuery({
-    queryKey: ["league-browse", apiParams.toString()],
+    queryKey: ["league-browse", chainId, filters.entryToken ?? "", filters.sort ?? "", filters.order ?? ""],
     queryFn: ({ signal }) => fetchLeagueBrowse(apiParams, signal),
     staleTime: 20_000,
     retry: 1,
   });
 
+  const tokensQuery = useQuery({
+    queryKey: ["whitelisted-tokens", chainId, "browse"],
+    queryFn: ({ signal }) => fetchWhitelistedTokens(chainId, signal),
+    enabled: WHITELIST_QUERY_CHAIN_IDS.has(chainId),
+    staleTime: 60_000,
+  });
+
   const setFields = useCallback(
     (patch: Record<string, string | undefined>) => {
-      const next = new URLSearchParams(search);
-      for (const [k, v] of Object.entries(patch)) {
-        if (v === undefined || v === "") next.delete(k);
-        else next.set(k, v);
-      }
-      setSearch(next, { replace: true });
+      setSearch(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [k, v] of Object.entries(patch)) {
+            if (v === undefined || v === "") next.delete(k);
+            else next.set(k, v);
+          }
+          return next;
+        },
+        { replace: true },
+      );
     },
-    [search, setSearch],
+    [setSearch],
   );
 
-  const hasActiveFilters =
-    Boolean(search.get("chainId")) ||
-    Boolean(search.get("entryToken")?.trim()) ||
-    Boolean(search.get("minFeeWei")?.trim()) ||
-    Boolean(search.get("maxFeeWei")?.trim());
+  const hasActiveFilters = Boolean(search.get("entryToken")?.trim());
 
   const featured = query.data?.data.featured ?? [];
   const leagues = query.data?.data.leagues ?? [];
   const isEmpty = !query.isLoading && !query.isError && featured.length === 0 && leagues.length === 0;
+
+  const tokenOptions = tokensQuery.data?.data.tokens ?? [];
+  const selectedToken = search.get("entryToken")?.trim() ?? "";
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -70,8 +111,8 @@ export function BrowsePage() {
           Browse leagues
         </h1>
         <p className="relative mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          Public leagues from the indexer API. Filter by chain, entry token, and fee; sort by date, pool size, or
-          entries. No wallet required.
+          Public leagues from the indexer for <span className="font-medium text-foreground">{chainLabel(chainId)}</span>
+          . Switch your wallet network to change chain. Sort by date, pool size, or entries.
         </p>
       </header>
 
@@ -79,49 +120,32 @@ export function BrowsePage() {
         aria-label="Filters"
         className="mb-10 flex flex-col gap-4 rounded-xl border border-border/80 bg-card/50 p-4 shadow-[0_0_40px_-18px_rgba(104,74,188,0.2)] backdrop-blur-sm sm:p-6"
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-            Chain
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground sm:col-span-2">
+            Entry token
             <select
               className={selectClass}
-              value={search.get("chainId") ?? ""}
-              onChange={(e) => setFields({ chainId: e.target.value || undefined })}
+              value={selectedToken}
+              onChange={(e) => setFields({ entryToken: e.target.value || undefined })}
+              disabled={
+                !WHITELIST_QUERY_CHAIN_IDS.has(chainId) || tokensQuery.isLoading || tokensQuery.isError
+              }
             >
-              {browseChainsForFilter().map((c) => (
-                <option key={c.id === "" ? "all" : String(c.id)} value={c.id === "" ? "" : String(c.id)}>
-                  {c.label}
+              <option value="">All tokens</option>
+              {tokenOptions.map((t) => (
+                <option key={t.address} value={t.address}>
+                  {t.symbol}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground sm:col-span-2">
-            Entry token (symbol or 0x address)
-            <Input
-              className="min-h-11"
-              placeholder="e.g. USDC"
-              value={search.get("entryToken") ?? ""}
-              onChange={(e) => setFields({ entryToken: e.target.value || undefined })}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-            Min fee (wei)
-            <Input
-              className="min-h-11 font-mono text-sm"
-              inputMode="numeric"
-              placeholder="0"
-              value={search.get("minFeeWei") ?? ""}
-              onChange={(e) => setFields({ minFeeWei: e.target.value || undefined })}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-            Max fee (wei)
-            <Input
-              className="min-h-11 font-mono text-sm"
-              inputMode="numeric"
-              placeholder="optional"
-              value={search.get("maxFeeWei") ?? ""}
-              onChange={(e) => setFields({ maxFeeWei: e.target.value || undefined })}
-            />
+            {tokensQuery.isError ? (
+              <span className="text-xs text-destructive">{(tokensQuery.error as Error).message}</span>
+            ) : null}
+            {!WHITELIST_QUERY_CHAIN_IDS.has(chainId) ? (
+              <span className="text-xs text-muted-foreground">
+                Per-token filter uses the curated list on Base, Ethereum, and Sonic mainnet.
+              </span>
+            ) : null}
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
             Sort by
@@ -149,8 +173,8 @@ export function BrowsePage() {
         </div>
         {hasActiveFilters ? (
           <div>
-            <Button type="button" variant="secondary" className="min-h-11" onClick={() => setSearch({}, { replace: true })}>
-              Clear filters
+            <Button type="button" variant="secondary" className="min-h-11" onClick={() => setFields({ entryToken: undefined })}>
+              Clear token filter
             </Button>
           </div>
         ) : null}
@@ -181,13 +205,11 @@ export function BrowsePage() {
 
       {isEmpty ? (
         <div className="rounded-xl border border-border/80 bg-card/40 px-6 py-12 text-center shadow-inner shadow-black/20">
-          <p className="text-lg font-medium text-foreground">No leagues match these filters</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Try choosing &quot;All chains&quot;, removing the token filter, or widening the fee range.
-          </p>
+          <p className="text-lg font-medium text-foreground">No leagues on {chainLabel(chainId)} match these filters</p>
+          <p className="mt-2 text-sm text-muted-foreground">Try clearing the token filter or switching network if you expected other leagues.</p>
           {hasActiveFilters ? (
-            <Button type="button" className="mt-6 min-h-11" variant="secondary" onClick={() => setSearch({}, { replace: true })}>
-              Reset filters
+            <Button type="button" className="mt-6 min-h-11" variant="secondary" onClick={() => setFields({ entryToken: undefined })}>
+              Clear token filter
             </Button>
           ) : null}
         </div>

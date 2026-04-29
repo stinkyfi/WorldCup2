@@ -85,17 +85,9 @@ export function partitionBrowseRows(
 export function buildLeagueBrowseWhere(input: {
   chainId?: number;
   entryToken?: string;
-  minFeeWei?: bigint;
-  maxFeeWei?: bigint;
 }): Prisma.LeagueWhereInput {
   const andParts: Prisma.LeagueWhereInput[] = [];
   if (input.chainId !== undefined) andParts.push({ chainId: input.chainId });
-  if (input.minFeeWei !== undefined || input.maxFeeWei !== undefined) {
-    const r: Prisma.BigIntFilter = {};
-    if (input.minFeeWei !== undefined) r.gte = input.minFeeWei;
-    if (input.maxFeeWei !== undefined) r.lte = input.maxFeeWei;
-    andParts.push({ entryFeeWei: r });
-  }
   if (input.entryToken) {
     const t = input.entryToken.trim();
     if (t.length > 0) {

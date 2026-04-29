@@ -1,12 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getAddress } from "viem";
 import { useAccount, useChainId, useReadContract, useSwitchChain } from "wagmi";
+import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CREATE_LEAGUE_CHAINS, type CreateLeagueChainId } from "@/lib/createLeagueChains";
+import {
+  CREATE_LEAGUE_CHAINS,
+  createLeagueChainLabel,
+  isCreateLeagueChain,
+  type CreateLeagueChainId,
+} from "@/lib/createLeagueChains";
 import { leagueFactoryAddress, promotionUsdcRecipient } from "@/lib/createLeagueEnv";
 import { entryFeeMinimumError, parseEntryFeeWei, parsePositiveInt } from "@/lib/createWizardFee";
 import { fetchWhitelistedTokens, type WhitelistedTokenOption } from "@/lib/fetchWhitelistedTokens";
@@ -15,7 +21,7 @@ import { formatUsdc6, promotionUsdcTotalWei } from "@/lib/promotionPreview";
 import { useCreateLeagueSubmit } from "@/lib/useCreateLeagueSubmit";
 import { cn } from "@/lib/utils";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5;
 type RevisionChoice = "locked" | "free" | "paid";
 
 function revisionPolicyU8(r: RevisionChoice): number {
@@ -34,7 +40,7 @@ function formatSubmitError(e: unknown): string {
   return "Something went wrong. Try again.";
 }
 
-const stepLabels = ["Chain", "Token", "Fees & limits", "Revision", "Promotion", "Review"] as const;
+const stepLabels = ["Entry token", "Fees & limits", "Revision", "Promotion", "Review"] as const;
 
 export function CreateLeagueWizardPage() {
   const navigate = useNavigate();
@@ -43,8 +49,13 @@ export function CreateLeagueWizardPage() {
   const { switchChainAsync } = useSwitchChain();
   const { submit, phase, errorMessage: txError, reset: resetTx } = useCreateLeagueSubmit();
 
+  const chainId = useMemo((): CreateLeagueChainId | null => {
+    return isCreateLeagueChain(walletChainId) ? walletChainId : null;
+  }, [walletChainId]);
+
+  const chainLabel = chainId !== null ? createLeagueChainLabel(chainId) : null;
+
   const [step, setStep] = useState<Step>(1);
-  const [chainId, setChainId] = useState<CreateLeagueChainId | null>(null);
   const [token, setToken] = useState<WhitelistedTokenOption | null>(null);
   const [entryFeeInput, setEntryFeeInput] = useState("");
   const [maxEntriesInput, setMaxEntriesInput] = useState("");
@@ -59,13 +70,20 @@ export function CreateLeagueWizardPage() {
   const [stepError, setStepError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
+  useEffect(() => {
+    setToken(null);
+    if (!isCreateLeagueChain(walletChainId)) {
+      setStep(1);
+    }
+  }, [walletChainId]);
+
   const factoryAddress = chainId ? leagueFactoryAddress(chainId) : undefined;
   const { data: creationFeeWei, isFetching: creationFeeLoading } = useReadContract({
     address: factoryAddress,
     abi: leagueFactoryAbi,
     functionName: "creationFee",
     chainId: chainId ?? undefined,
-    query: { enabled: Boolean(factoryAddress && step === 6) },
+    query: { enabled: Boolean(factoryAddress && step === 5) },
   });
 
   const tokensQuery = useQuery({
@@ -85,8 +103,8 @@ export function CreateLeagueWizardPage() {
     setToast(null);
     resetTx();
     if (step === 1) {
-      if (chainId === null) {
-        setStepError("Select a chain before continuing.");
+      if (!token) {
+        setStepError("Select an entry token before continuing.");
         return;
       }
       setStep(2);
@@ -94,15 +112,7 @@ export function CreateLeagueWizardPage() {
     }
     if (step === 2) {
       if (!token) {
-        setStepError("Select an entry token before continuing.");
-        return;
-      }
-      setStep(3);
-      return;
-    }
-    if (step === 3) {
-      if (!token) {
-        setStepError("Select a token on step 2.");
+        setStepError("Select a token first.");
         return;
       }
       const fee = parseEntryFeeWei(entryFeeInput, token.decimals);
@@ -138,10 +148,10 @@ export function CreateLeagueWizardPage() {
         setStepError("Minimum players cannot exceed max total entries.");
         return;
       }
-      setStep(4);
+      setStep(3);
       return;
     }
-    if (step === 4) {
+    if (step === 3) {
       if (revision === "paid") {
         if (!token) {
           setStepError("Select a token before configuring paid revisions.");
@@ -154,16 +164,15 @@ export function CreateLeagueWizardPage() {
           return;
         }
       }
-      setStep(5);
+      setStep(4);
       return;
     }
-    if (step === 5) {
+    if (step === 4) {
       resetTx();
-      setStep(6);
+      setStep(5);
     }
   }, [
     step,
-    chainId,
     token,
     entryFeeInput,
     maxEntriesInput,
@@ -266,7 +275,7 @@ export function CreateLeagueWizardPage() {
         await switchChainAsync({ chainId });
       }
     } catch {
-      setStepError("Please switch your wallet to the selected chain and try again.");
+      setStepError("Please switch your wallet to the correct network and try again.");
       return;
     }
 
@@ -313,6 +322,8 @@ export function CreateLeagueWizardPage() {
     resetTx,
   ]);
 
+  const wizardReady = isConnected && chainId !== null;
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
       <header className="mb-8">
@@ -320,377 +331,414 @@ export function CreateLeagueWizardPage() {
         <h1 className="mt-1 text-3xl font-semibold tracking-tight text-foreground">New league wizard</h1>
         <p className="mt-2 text-muted-foreground">
           Configure your league, then sign the on-chain <code className="rounded bg-muted px-1">createLeague</code>{" "}
-          transaction on the chain you selected. Optional USDC promotion runs as a second wallet signature when
-          enabled.
+          transaction on the network your wallet is using. Optional USDC promotion runs as a second wallet signature
+          when enabled.
         </p>
       </header>
 
-      <ol className="mb-8 grid grid-cols-2 gap-2 text-xs font-medium text-muted-foreground sm:grid-cols-3 md:grid-cols-6" aria-label="Wizard progress">
-        {([1, 2, 3, 4, 5, 6] as const).map((n) => (
-          <li
-            key={n}
-            className={cn(
-              "rounded-md border px-2 py-2 text-center sm:text-sm",
-              step === n ? "border-accent/40 bg-primary/15 text-foreground shadow-[0_0_24px_-12px_rgba(104,74,188,0.35)]" : "border-border bg-card/40",
-            )}
-          >
-            {n}. {stepLabels[n - 1]}
-          </li>
-        ))}
-      </ol>
+      {!isConnected && (
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle>Connect your wallet</CardTitle>
+            <CardDescription>You need a connected wallet to see whitelisted tokens and deploy on a supported chain.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <ConnectWalletButton />
+            <Button type="button" variant="ghost" className="min-h-11 self-start" asChild>
+              <Link to="/">Cancel</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle>
-            {step === 1 && "Choose chain"}
-            {step === 2 && "Choose entry token"}
-            {step === 3 && "Entry fee & entry limits"}
-            {step === 4 && "Revision policy"}
-            {step === 5 && "Promotion (optional)"}
-            {step === 6 && "Review & create"}
-          </CardTitle>
-          <CardDescription>
-            {step === 1 && "Leagues are chain-isolated. Pick where this league will live."}
-            {step === 2 && "Only tokens whitelisted on the indexer for this chain are listed (FR12)."}
-            {step === 3 &&
-              token &&
-              `Amounts use ${token.symbol} decimals (${token.decimals}). Minimum entry is enforced per token.`}
-            {step === 4 && "Prediction revision mode and paid fee (if selected) are stored on-chain and immutable after creation."}
-            {step === 5 &&
-              "Default promotion is $20 USDC per day. You can skip; if enabled, a USDC transfer is sent after league creation (second signature)."}
-            {step === 6 && "Confirm lock time, review all values, then sign with your wallet."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-6">
-          {step === 1 && (
-            <fieldset className="space-y-3">
-              <legend className="sr-only">Chain</legend>
+      {isConnected && !chainId && (
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle>Unsupported network</CardTitle>
+            <CardDescription>
+              Your wallet is on chain ID {walletChainId}. Leagues can only be created on Base, Ethereum, or Sonic.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">Switch your wallet to one of these networks, then continue here.</p>
+            <div className="flex flex-wrap gap-2">
               {CREATE_LEAGUE_CHAINS.map((c) => (
-                <label
+                <Button
                   key={c.chainId}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors min-h-11",
-                    chainId === c.chainId ? "border-accent/35 bg-primary/10" : "border-border hover:bg-muted/40",
-                  )}
+                  type="button"
+                  variant="secondary"
+                  className="min-h-11"
+                  onClick={() => void switchChainAsync?.({ chainId: c.chainId })}
                 >
-                  <input
-                    type="radio"
-                    name="create-chain"
-                    className="h-4 w-4 accent-primary"
-                    checked={chainId === c.chainId}
-                    onChange={() => {
-                      setChainId(c.chainId);
-                      setToken(null);
-                    }}
-                  />
-                  <span className="text-sm font-medium text-foreground">{c.label}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">Chain ID {c.chainId}</span>
-                </label>
+                  Switch to {c.label}
+                </Button>
               ))}
-            </fieldset>
-          )}
+            </div>
+            <Button type="button" variant="ghost" className="min-h-11 self-start" asChild>
+              <Link to="/">Cancel</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-          {step === 2 && chainId !== null && (
-            <div className="space-y-3">
-              {tokensQuery.isLoading && <p className="text-sm text-muted-foreground">Loading tokens…</p>}
-              {tokensQuery.isError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {(tokensQuery.error as Error).message}
+      {wizardReady && (
+        <>
+          <ol
+            className="mb-8 grid grid-cols-2 gap-2 text-xs font-medium text-muted-foreground sm:grid-cols-3 md:grid-cols-5"
+            aria-label="Wizard progress"
+          >
+            {([1, 2, 3, 4, 5] as const).map((n) => (
+              <li
+                key={n}
+                className={cn(
+                  "rounded-md border px-2 py-2 text-center sm:text-sm",
+                  step === n
+                    ? "border-accent/40 bg-primary/15 text-foreground shadow-[0_0_24px_-12px_rgba(104,74,188,0.35)]"
+                    : "border-border bg-card/40",
+                )}
+              >
+                {n}. {stepLabels[n - 1]}
+              </li>
+            ))}
+          </ol>
+
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle>
+                {step === 1 && "Choose entry token"}
+                {step === 2 && "Entry fee & entry limits"}
+                {step === 3 && "Revision policy"}
+                {step === 4 && "Promotion (optional)"}
+                {step === 5 && "Review & create"}
+              </CardTitle>
+              <CardDescription>
+                {step === 1 && "Only tokens whitelisted on the indexer for this chain are listed (FR12)."}
+                {step === 2 &&
+                  token &&
+                  `Amounts use ${token.symbol} decimals (${token.decimals}). Minimum entry is enforced per token.`}
+                {step === 3 &&
+                  "Prediction revision mode and paid fee (if selected) are stored on-chain and immutable after creation."}
+                {step === 4 &&
+                  "Default promotion is $20 USDC per day. You can skip; if enabled, a USDC transfer is sent after league creation (second signature)."}
+                {step === 5 && "Confirm lock time, review all values, then sign with your wallet."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-6">
+              <div
+                className="rounded-lg border border-accent/20 bg-primary/10 px-4 py-3 text-sm text-foreground"
+                role="status"
+              >
+                <p>
+                  <span className="font-medium">{chainLabel}</span> (chain ID {chainId}). Your league will be created on
+                  this network—the same one your wallet is connected to.
                 </p>
-              )}
-              {tokensQuery.data && tokensQuery.data.data.tokens.length === 0 && (
-                <p className="text-sm text-muted-foreground">No whitelisted tokens for this chain yet.</p>
-              )}
-              {tokensQuery.data &&
-                tokensQuery.data.data.tokens.map((t) => (
-                  <button
-                    key={t.address}
-                    type="button"
-                    onClick={() => setToken(t)}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors min-h-11",
-                      token?.address.toLowerCase() === t.address.toLowerCase()
-                        ? "border-primary bg-primary/5 font-medium"
-                        : "border-border hover:bg-muted/40",
-                    )}
-                  >
-                    <span>
-                      {t.symbol}{" "}
-                      <span className="text-muted-foreground font-normal">
-                        ({t.decimals} decimals) · min {t.minEntryWei} wei
-                      </span>
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">{t.address.slice(0, 10)}…</span>
-                  </button>
-                ))}
-            </div>
-          )}
+              </div>
 
-          {step === 3 && token && (
-            <div className="space-y-4">
-              <label className="flex flex-col gap-1.5 text-sm font-medium">
-                Flat entry fee ({token.symbol})
-                <Input
-                  className="min-h-11"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  placeholder={token.decimals <= 6 ? "e.g. 10.5" : "e.g. 0.05"}
-                  value={entryFeeInput}
-                  onChange={(e) => setEntryFeeInput(e.target.value)}
-                  aria-describedby="fee-hint"
-                />
-                <span id="fee-hint" className="text-xs font-normal text-muted-foreground">
-                  Minimum (platform): {token.minEntryWei} smallest units for {token.symbol}.
-                </span>
-              </label>
-              <label className="flex flex-col gap-1.5 text-sm font-medium">
-                Max total entries
-                <Input
-                  className="min-h-11"
-                  inputMode="numeric"
-                  value={maxEntriesInput}
-                  onChange={(e) => setMaxEntriesInput(e.target.value)}
-                />
-              </label>
-              <label className="flex flex-col gap-1.5 text-sm font-medium">
-                Max entries per wallet
-                <Input
-                  className="min-h-11"
-                  inputMode="numeric"
-                  value={maxPerWalletInput}
-                  onChange={(e) => setMaxPerWalletInput(e.target.value)}
-                />
-              </label>
-              <label className="flex flex-col gap-1.5 text-sm font-medium">
-                Minimum players (optional)
-                <Input
-                  className="min-h-11"
-                  inputMode="numeric"
-                  placeholder="Leave empty if not used"
-                  value={minPlayersInput}
-                  onChange={(e) => setMinPlayersInput(e.target.value)}
-                  aria-describedby="min-players-hint"
-                />
-                <span id="min-players-hint" className="text-xs font-normal text-muted-foreground">
-                  If set, must be a positive whole number and cannot exceed max total entries.
-                </span>
-              </label>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="space-y-4">
-              {(
-                [
-                  { id: "locked" as const, title: "Locked", desc: "No prediction changes after entry." },
-                  { id: "free" as const, title: "Free revisions", desc: "Players may revise predictions for free until lock." },
-                  { id: "paid" as const, title: "Paid revisions", desc: "Players pay to revise (fee captured off-chain for now)." },
-                ] as const
-              ).map((opt) => (
-                <label
-                  key={opt.id}
-                  className={cn(
-                    "flex cursor-pointer flex-col gap-1 rounded-lg border px-4 py-3 min-h-11",
-                    revision === opt.id ? "border-accent/35 bg-primary/10" : "border-border hover:bg-muted/40",
+              {step === 1 && (
+                <div className="space-y-3">
+                  {tokensQuery.isLoading && <p className="text-sm text-muted-foreground">Loading tokens…</p>}
+                  {tokensQuery.isError && (
+                    <p className="text-sm text-destructive" role="alert">
+                      {(tokensQuery.error as Error).message}
+                    </p>
                   )}
-                >
-                  <span className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="revision-policy"
-                      className="h-4 w-4 accent-primary"
-                      checked={revision === opt.id}
-                      onChange={() => setRevision(opt.id)}
-                    />
-                    <span className="text-sm font-medium">{opt.title}</span>
-                  </span>
-                  <span className="pl-6 text-xs text-muted-foreground">{opt.desc}</span>
-                </label>
-              ))}
-              {revision === "paid" && (
-                <label className="flex flex-col gap-1.5 text-sm font-medium">
-                  Paid revision fee
-                  <Input
-                    className="min-h-11"
-                    inputMode="decimal"
-                    value={paidRevisionFeeInput}
-                    onChange={(e) => setPaidRevisionFeeInput(e.target.value)}
-                    placeholder="e.g. 1.5 (in entry token)"
-                  />
-                </label>
+                  {tokensQuery.data && tokensQuery.data.data.tokens.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No whitelisted tokens for this chain yet.</p>
+                  )}
+                  {tokensQuery.data &&
+                    tokensQuery.data.data.tokens.map((t) => (
+                      <button
+                        key={t.address}
+                        type="button"
+                        onClick={() => setToken(t)}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors min-h-11",
+                          token?.address.toLowerCase() === t.address.toLowerCase()
+                            ? "border-primary bg-primary/5 font-medium"
+                            : "border-border hover:bg-muted/40",
+                        )}
+                      >
+                        <span>
+                          {t.symbol}{" "}
+                          <span className="text-muted-foreground font-normal">
+                            ({t.decimals} decimals) · min {t.minEntryWei} wei
+                          </span>
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">{t.address.slice(0, 10)}…</span>
+                      </button>
+                    ))}
+                </div>
               )}
-            </div>
-          )}
 
-          {step === 5 && (
-            <div className="space-y-4">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded accent-primary"
-                  checked={promotionEnabled}
-                  onChange={(e) => setPromotionEnabled(e.target.checked)}
-                />
-                Add paid promotion (USDC transfer after league creation)
-              </label>
-              {promotionEnabled && (
-                <>
+              {step === 2 && token && (
+                <div className="space-y-4">
                   <label className="flex flex-col gap-1.5 text-sm font-medium">
-                    Duration (days)
+                    Flat entry fee ({token.symbol})
+                    <Input
+                      className="min-h-11"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder={token.decimals <= 6 ? "e.g. 10.5" : "e.g. 0.05"}
+                      value={entryFeeInput}
+                      onChange={(e) => setEntryFeeInput(e.target.value)}
+                      aria-describedby="fee-hint"
+                    />
+                    <span id="fee-hint" className="text-xs font-normal text-muted-foreground">
+                      Minimum (platform): {token.minEntryWei} smallest units for {token.symbol}.
+                    </span>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium">
+                    Max total entries
                     <Input
                       className="min-h-11"
                       inputMode="numeric"
-                      value={promotionDays}
-                      onChange={(e) => setPromotionDays(e.target.value)}
+                      value={maxEntriesInput}
+                      onChange={(e) => setMaxEntriesInput(e.target.value)}
                     />
                   </label>
-                  <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
-                    <span className="font-medium">Preview:</span> {formatUsdc6(promotionWei)} USDC total (
-                    <span className="text-muted-foreground">$20/day × {promotionDays || "0"} days</span>).
-                    <span className="block text-muted-foreground">
-                      In entry token:{" "}
-                      {token?.symbol === "USDC" ? `${formatUsdc6(promotionWei)} USDC` : "Pricing unavailable"}
+                  <label className="flex flex-col gap-1.5 text-sm font-medium">
+                    Max entries per wallet
+                    <Input
+                      className="min-h-11"
+                      inputMode="numeric"
+                      value={maxPerWalletInput}
+                      onChange={(e) => setMaxPerWalletInput(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium">
+                    Minimum players (optional)
+                    <Input
+                      className="min-h-11"
+                      inputMode="numeric"
+                      placeholder="Leave empty if not used"
+                      value={minPlayersInput}
+                      onChange={(e) => setMinPlayersInput(e.target.value)}
+                      aria-describedby="min-players-hint"
+                    />
+                    <span id="min-players-hint" className="text-xs font-normal text-muted-foreground">
+                      If set, must be a positive whole number and cannot exceed max total entries.
                     </span>
-                  </p>
-                </>
+                  </label>
+                </div>
               )}
-            </div>
-          )}
 
-          {step === 6 && chainId && token && (
-            <div className="space-y-4">
-              <label className="flex flex-col gap-1.5 text-sm font-medium">
-                Lock entries (local time)
-                <Input
-                  className="min-h-11"
-                  type="datetime-local"
-                  value={lockDatetimeLocal}
-                  onChange={(e) => setLockDatetimeLocal(e.target.value)}
-                />
-              </label>
+              {step === 3 && (
+                <div className="space-y-4">
+                  {(
+                    [
+                      { id: "locked" as const, title: "Locked", desc: "No prediction changes after entry." },
+                      { id: "free" as const, title: "Free revisions", desc: "Players may revise predictions for free until lock." },
+                      { id: "paid" as const, title: "Paid revisions", desc: "Players pay to revise (fee captured off-chain for now)." },
+                    ] as const
+                  ).map((opt) => (
+                    <label
+                      key={opt.id}
+                      className={cn(
+                        "flex cursor-pointer flex-col gap-1 rounded-lg border px-4 py-3 min-h-11",
+                        revision === opt.id ? "border-accent/35 bg-primary/10" : "border-border hover:bg-muted/40",
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="revision-policy"
+                          className="h-4 w-4 accent-primary"
+                          checked={revision === opt.id}
+                          onChange={() => setRevision(opt.id)}
+                        />
+                        <span className="text-sm font-medium">{opt.title}</span>
+                      </span>
+                      <span className="pl-6 text-xs text-muted-foreground">{opt.desc}</span>
+                    </label>
+                  ))}
+                  {revision === "paid" && (
+                    <label className="flex flex-col gap-1.5 text-sm font-medium">
+                      Paid revision fee
+                      <Input
+                        className="min-h-11"
+                        inputMode="decimal"
+                        value={paidRevisionFeeInput}
+                        onChange={(e) => setPaidRevisionFeeInput(e.target.value)}
+                        placeholder="e.g. 1.5 (in entry token)"
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
 
-              <div className="rounded-md border border-border bg-muted/20 p-4 text-sm space-y-2">
-                <p className="font-medium text-foreground">Summary</p>
-                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                  <li>Chain ID {chainId}</li>
-                  <li>
-                    Token {token.symbol} ({token.address.slice(0, 10)}…)
-                  </li>
-                  <li>Entry fee (input): {entryFeeInput || "—"}</li>
-                  <li>
-                    Max entries {maxEntriesInput || "—"}, per wallet {maxPerWalletInput || "—"}, min players{" "}
-                    {minPlayersInput || "none"}
-                  </li>
-                  <li>Revision: {revision}</li>
-                  {revision === "paid" && <li>Paid revision fee: {paidRevisionFeeInput || "—"}</li>}
-                  <li>
-                    Promotion: {promotionEnabled ? `${formatUsdc6(promotionWei)} USDC` : "None"}
-                  </li>
-                </ul>
-              </div>
+              {step === 4 && (
+                <div className="space-y-4">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded accent-primary"
+                      checked={promotionEnabled}
+                      onChange={(e) => setPromotionEnabled(e.target.checked)}
+                    />
+                    Add paid promotion (USDC transfer after league creation)
+                  </label>
+                  {promotionEnabled && (
+                    <>
+                      <label className="flex flex-col gap-1.5 text-sm font-medium">
+                        Duration (days)
+                        <Input
+                          className="min-h-11"
+                          inputMode="numeric"
+                          value={promotionDays}
+                          onChange={(e) => setPromotionDays(e.target.value)}
+                        />
+                      </label>
+                      <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                        <span className="font-medium">Preview:</span> {formatUsdc6(promotionWei)} USDC total (
+                        <span className="text-muted-foreground">$20/day × {promotionDays || "0"} days</span>).
+                        <span className="block text-muted-foreground">
+                          In entry token:{" "}
+                          {token?.symbol === "USDC" ? `${formatUsdc6(promotionWei)} USDC` : "Pricing unavailable"}
+                        </span>
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
 
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-foreground">
-                <p className="font-medium">Immutability</p>
-                <p className="mt-1 text-muted-foreground">
-                  League parameters baked into the contract cannot be changed after deployment.
-                </p>
-                <label className="mt-3 flex items-start gap-2 font-medium">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 rounded accent-primary"
-                    checked={immutabilityAck}
-                    onChange={(e) => setImmutabilityAck(e.target.checked)}
-                  />
-                  <span>I understand these settings cannot be changed after creation</span>
-                </label>
-              </div>
+              {step === 5 && chainId && token && (
+                <div className="space-y-4">
+                  <label className="flex flex-col gap-1.5 text-sm font-medium">
+                    Lock entries (local time)
+                    <Input
+                      className="min-h-11"
+                      type="datetime-local"
+                      value={lockDatetimeLocal}
+                      onChange={(e) => setLockDatetimeLocal(e.target.value)}
+                    />
+                  </label>
 
-              <div className="rounded-md border border-border bg-card/60 p-4 text-sm space-y-1">
-                <p className="font-medium">Fees before signing</p>
-                {factoryAddress ? (
-                  <>
-                    <p>
-                      <span className="text-muted-foreground">Native creation fee (factory):</span>{" "}
-                      {creationFeeLoading || creationFeeWei === undefined
-                        ? "Loading…"
-                        : `${creationFeeWei.toString()} wei`}
+                  <div className="rounded-md border border-border bg-muted/20 p-4 text-sm space-y-2">
+                    <p className="font-medium text-foreground">Summary</p>
+                    <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                      <li>
+                        {chainLabel} (chain ID {chainId})
+                      </li>
+                      <li>
+                        Token {token.symbol} ({token.address.slice(0, 10)}…)
+                      </li>
+                      <li>Entry fee (input): {entryFeeInput || "—"}</li>
+                      <li>
+                        Max entries {maxEntriesInput || "—"}, per wallet {maxPerWalletInput || "—"}, min players{" "}
+                        {minPlayersInput || "none"}
+                      </li>
+                      <li>Revision: {revision}</li>
+                      {revision === "paid" && <li>Paid revision fee: {paidRevisionFeeInput || "—"}</li>}
+                      <li>
+                        Promotion: {promotionEnabled ? `${formatUsdc6(promotionWei)} USDC` : "None"}
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-foreground">
+                    <p className="font-medium">Immutability</p>
+                    <p className="mt-1 text-muted-foreground">
+                      League parameters baked into the contract cannot be changed after deployment.
                     </p>
-                    {promotionEnabled && promotionWei > 0n && (
-                      <p>
-                        <span className="text-muted-foreground">Promotion (USDC):</span> {formatUsdc6(promotionWei)}{" "}
-                        USDC
+                    <label className="mt-3 flex items-start gap-2 font-medium">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 rounded accent-primary"
+                        checked={immutabilityAck}
+                        onChange={(e) => setImmutabilityAck(e.target.checked)}
+                      />
+                      <span>I understand these settings cannot be changed after creation</span>
+                    </label>
+                  </div>
+
+                  <div className="rounded-md border border-border bg-card/60 p-4 text-sm space-y-1">
+                    <p className="font-medium">Fees before signing</p>
+                    {factoryAddress ? (
+                      <>
+                        <p>
+                          <span className="text-muted-foreground">Native creation fee (factory):</span>{" "}
+                          {creationFeeLoading || creationFeeWei === undefined
+                            ? "Loading…"
+                            : `${creationFeeWei.toString()} wei`}
+                        </p>
+                        {promotionEnabled && promotionWei > 0n && (
+                          <p>
+                            <span className="text-muted-foreground">Promotion (USDC):</span> {formatUsdc6(promotionWei)}{" "}
+                            USDC
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-destructive">
+                        Set <code className="rounded bg-muted px-1">VITE_LEAGUE_FACTORY_{chainId}</code> to continue.
                       </p>
                     )}
-                  </>
-                ) : (
-                  <p className="text-destructive">
-                    Set <code className="rounded bg-muted px-1">VITE_LEAGUE_FACTORY_{chainId}</code> to continue.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {stepError && (
-            <p className="text-sm text-destructive" role="alert">
-              {stepError}
-            </p>
-          )}
-          {txError && step === 6 && (
-            <p className="text-sm text-destructive" role="alert">
-              {txError}
-            </p>
-          )}
-
-          {toast && (
-            <p
-              className={cn(
-                "rounded-md border px-3 py-2 text-sm",
-                toast.kind === "success"
-                  ? "border-accent/40 bg-primary/15 text-foreground shadow-[0_0_28px_-14px_rgba(10,238,235,0.15)]"
-                  : "border-destructive/50 bg-destructive/10 text-destructive",
+                  </div>
+                </div>
               )}
-              role="status"
-            >
-              {toast.text}
-            </p>
-          )}
 
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Button type="button" variant="secondary" className="min-h-11" onClick={goBack} disabled={step === 1 || busy}>
-              Back
-            </Button>
-            {step < 6 ? (
-              <Button type="button" className="min-h-11" onClick={goNext} disabled={busy}>
-                Continue
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                className="min-h-11"
-                onClick={() => void onCreateLeague()}
-                disabled={
-                  busy ||
-                  !immutabilityAck ||
-                  !factoryAddress ||
-                  creationFeeWei === undefined ||
-                  creationFeeLoading
-                }
-              >
-                {busy ? (phase === "promoting" ? "Signing promotion…" : "Creating league…") : "Create league"}
-              </Button>
-            )}
-            {step === 6 && txError && (
-              <Button type="button" variant="secondary" className="min-h-11" onClick={() => void onCreateLeague()} disabled={busy}>
-                Retry
-              </Button>
-            )}
-            <Button type="button" variant="ghost" className="min-h-11" asChild disabled={busy}>
-              <Link to="/">Cancel</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              {stepError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {stepError}
+                </p>
+              )}
+              {txError && step === 5 && (
+                <p className="text-sm text-destructive" role="alert">
+                  {txError}
+                </p>
+              )}
+
+              {toast && (
+                <p
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-sm",
+                    toast.kind === "success"
+                      ? "border-accent/40 bg-primary/15 text-foreground shadow-[0_0_28px_-14px_rgba(10,238,235,0.15)]"
+                      : "border-destructive/50 bg-destructive/10 text-destructive",
+                  )}
+                  role="status"
+                >
+                  {toast.text}
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Button type="button" variant="secondary" className="min-h-11" onClick={goBack} disabled={step === 1 || busy}>
+                  Back
+                </Button>
+                {step < 5 ? (
+                  <Button type="button" className="min-h-11" onClick={goNext} disabled={busy}>
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    className="min-h-11"
+                    onClick={() => void onCreateLeague()}
+                    disabled={
+                      busy ||
+                      !immutabilityAck ||
+                      !factoryAddress ||
+                      creationFeeWei === undefined ||
+                      creationFeeLoading
+                    }
+                  >
+                    {busy ? (phase === "promoting" ? "Signing promotion…" : "Creating league…") : "Create league"}
+                  </Button>
+                )}
+                {step === 5 && txError && (
+                  <Button type="button" variant="secondary" className="min-h-11" onClick={() => void onCreateLeague()} disabled={busy}>
+                    Retry
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" className="min-h-11" asChild disabled={busy}>
+                  <Link to="/">Cancel</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

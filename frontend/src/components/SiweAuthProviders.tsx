@@ -9,6 +9,7 @@ import { SiweMessage } from "siwe";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAccount, WagmiProvider } from "wagmi";
 import { GetWalletDisclaimer } from "@/components/GetWalletDisclaimer";
+import { RainbowKitEnsAvatar } from "@/components/RainbowKitEnsAvatar";
 import { SessionChainSync } from "@/components/SessionChainSync";
 import { apiUrl } from "@/lib/apiBase";
 import type { SessionUser } from "@/lib/siweAuthContext";
@@ -161,6 +162,7 @@ function SiweRainbowKitInner({ children }: { children: ReactNode }) {
         <RainbowKitAuthenticationProvider adapter={adapter} status={authStatus} enabled>
           <RainbowKitProvider
             theme={broadcastTheme}
+            avatar={RainbowKitEnsAvatar}
             appInfo={{
               appName: "DegenDraft",
               disclaimer: GetWalletDisclaimer,
