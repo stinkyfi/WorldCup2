@@ -1,14 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useAccount, useBlock } from "wagmi";
-import { formatUnits } from "viem";
+import { useAccount, useBlock, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
+import { formatUnits, getAddress, type Address, type Hex } from "viem";
+import { waitForTransactionReceipt } from "wagmi/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchCreatorPredictions } from "@/lib/creatorPredictions";
 import { chainLabel } from "@/lib/leagueBrowse";
 import { formatTimeToLock } from "@/lib/leagueDisplay";
 import { fetchLeagueCreatorDashboard, HttpError } from "@/lib/leagueCreatorDashboard";
+import { fetchMerkleFeeClaim } from "@/lib/merkleFeeClaim";
+import { leagueAbi } from "@/lib/leagueAbi";
+import { wagmiConfig } from "@/wagmi";
 
 function isAddress(s: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(s);
@@ -29,7 +33,7 @@ function buildShareText(platform: "x" | "telegram" | "discord", leagueTitle: str
 export function LeagueCreatorDashboardPage() {
   const { address = "" } = useParams();
   const navigate = useNavigate();
-  const { address: walletAddress } = useAccount();
+  const { address: walletAddress, isConnected } = useAccount();
   const [copied, setCopied] = useState<string | null>(null);
 
   const isValidAddress = useMemo(() => isAddress(address), [address]);
@@ -49,6 +53,108 @@ export function LeagueCreatorDashboardPage() {
 
   const league = query.data?.data.league;
   const leagueChainId = league?.chainId as 1 | 146 | 8453 | 84532 | undefined;
+  const leagueAddr = useMemo(() => {
+    if (!isValidAddress) return undefined;
+    try {
+      return getAddress(address) as Address;
+    } catch {
+      return undefined;
+    }
+  }, [address, isValidAddress]);
+
+  const { switchChainAsync } = useSwitchChain();
+  const { writeContractAsync } = useWriteContract();
+
+  const ZERO_MERKLE_ROOT =
+    "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
+
+  const { data: merkleRoot } = useReadContract({
+    address: leagueAddr,
+    abi: leagueAbi,
+    functionName: "merkleRoot",
+    chainId: leagueChainId,
+    query: { enabled: Boolean(leagueAddr && leagueChainId) },
+  });
+
+  const resolved = merkleRoot !== undefined && (merkleRoot as string) !== ZERO_MERKLE_ROOT;
+
+  const feeQuery = useQuery({
+    queryKey: ["merkle-fee", leagueChainId, address, walletAddress],
+    queryFn: ({ signal }) =>
+      fetchMerkleFeeClaim({
+        chainId: leagueChainId!,
+        leagueAddress: address,
+        walletAddress: walletAddress!,
+        signal,
+      }),
+    enabled: Boolean(resolved && leagueChainId && walletAddress),
+    staleTime: 15_000,
+    retry: 1,
+  });
+
+  const feeEligible = feeQuery.data?.data.eligible === true ? feeQuery.data.data : null;
+  const feeAmountWei = useMemo(() => {
+    if (!feeEligible) return undefined;
+    try {
+      return BigInt(feeEligible.amountWei);
+    } catch {
+      return undefined;
+    }
+  }, [feeEligible]);
+
+  const [feeBusy, setFeeBusy] = useState(false);
+  const [feeError, setFeeError] = useState<string | null>(null);
+  const [feeSuccess, setFeeSuccess] = useState<{ txHash: Hex } | null>(null);
+
+  const feeErrorMessage = useCallback((m: string): string => {
+    if (m.includes("AlreadyClaimed")) return "Fee was already claimed.";
+    if (m.includes("InvalidProof")) return "The fee proof does not match the on-chain Merkle root.";
+    if (m.includes("LeagueNotResolved")) return "This league is not resolved for fee claims yet.";
+    if (m.toLowerCase().includes("user rejected")) return "Transaction rejected in wallet.";
+    return "Fee claim failed. Please try again.";
+  }, []);
+
+  const onClaimFee = useCallback(async () => {
+    setFeeError(null);
+    if (!isConnected || !walletAddress) {
+      setFeeError("Connect the creator wallet to claim your fee.");
+      return;
+    }
+    if (!feeEligible || feeAmountWei === undefined || !leagueAddr || !leagueChainId) {
+      setFeeError("Nothing to claim.");
+      return;
+    }
+    try {
+      setFeeBusy(true);
+      await switchChainAsync({ chainId: leagueChainId });
+      const txHash = await writeContractAsync({
+        address: leagueAddr,
+        abi: leagueAbi,
+        functionName: "claimFee",
+        args: [feeAmountWei, feeEligible.proof],
+        chainId: leagueChainId,
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash: txHash, chainId: leagueChainId });
+      setFeeSuccess({ txHash });
+      void feeQuery.refetch();
+    } catch (e) {
+      const m = (e as Error | null | undefined)?.message ?? "";
+      setFeeError(feeErrorMessage(m));
+    } finally {
+      setFeeBusy(false);
+    }
+  }, [
+    feeAmountWei,
+    feeEligible,
+    feeErrorMessage,
+    feeQuery,
+    isConnected,
+    leagueAddr,
+    leagueChainId,
+    switchChainAsync,
+    walletAddress,
+    writeContractAsync,
+  ]);
   const { data: latestBlock } = useBlock({
     chainId: leagueChainId,
     query: { enabled: Boolean(leagueChainId) },
@@ -210,6 +316,61 @@ export function LeagueCreatorDashboardPage() {
               </Button>
               {copied === "error" ? <span className="self-center text-xs text-destructive">Copy failed.</span> : null}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Creator fee claim</CardTitle>
+            <CardDescription>Available after the Merkle root is posted for this league.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {!resolved ? (
+              <p className="text-muted-foreground">Claims open when the league is resolved and the Merkle root is posted.</p>
+            ) : !walletAddress ? (
+              <p className="text-muted-foreground">Connect your creator wallet to check your fee claim.</p>
+            ) : feeQuery.isLoading ? (
+              <p className="text-muted-foreground" role="status">
+                Loading fee claim…
+              </p>
+            ) : feeQuery.isError ? (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                Could not load fee claim.{" "}
+                <button type="button" className="underline underline-offset-2" onClick={() => void feeQuery.refetch()}>
+                  Retry
+                </button>
+              </div>
+            ) : feeQuery.data?.data.eligible === false ? (
+              <div className="rounded-md border border-border bg-muted/40 px-4 py-4 text-muted-foreground">
+                No fee leaf found for this wallet.
+              </div>
+            ) : feeEligible && feeAmountWei !== undefined ? (
+              <>
+                <div className="rounded-md border border-border bg-background/40 px-4 py-3">
+                  <div className="text-xs text-muted-foreground">Claimable</div>
+                  <div className="text-lg font-semibold text-foreground">
+                    {formatUnits(feeAmountWei, feeEligible.entryTokenDecimals)} {feeEligible.entryTokenSymbol}
+                  </div>
+                </div>
+                {feeError ? (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive">
+                    {feeError}
+                  </div>
+                ) : null}
+                {feeSuccess ? (
+                  <div className="rounded-md border border-accent/30 bg-primary/10 px-4 py-3 text-foreground">
+                    Fee claimed. Tx: <span className="font-mono text-xs">{feeSuccess.txHash}</span>
+                  </div>
+                ) : null}
+                <Button type="button" className="min-h-11" disabled={feeBusy} onClick={() => void onClaimFee()}>
+                  {feeBusy ? "Confirm in wallet…" : "Claim fee"}
+                </Button>
+              </>
+            ) : (
+              <p className="text-muted-foreground">Unexpected response.</p>
+            )}
           </CardContent>
         </Card>
       </div>

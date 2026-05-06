@@ -12,6 +12,7 @@ import { leagueAbi } from "@/lib/leagueAbi";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
 import { HttpError } from "@/lib/leagueCompliance";
 import { fetchMerklePrizeClaim } from "@/lib/merklePrizeClaim";
+import { isPastSweepWindow } from "@/lib/sweepWindow";
 import { wagmiConfig } from "@/wagmi";
 
 const ZERO_MERKLE_ROOT =
@@ -44,10 +45,13 @@ function usdApproxLabel(symbol: string, decimals: number, amountWei: bigint): st
   return `≈ $${v.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD (1:1 ${u} estimate)`;
 }
 
-function claimErrorMessage(m: string): string {
+function claimErrorMessage(m: string, opts?: { isPastSweepWindow?: boolean }): string {
   if (m.includes("AlreadyClaimed")) return "This prize was already claimed.";
   if (m.includes("InvalidProof")) return "The payout proof does not match the on-chain Merkle root.";
   if (m.includes("LeagueNotResolved")) return "This league is not resolved for claims yet.";
+  if (opts?.isPastSweepWindow) {
+    return "This prize has expired and been swept — claim window was 90 days after resolution.";
+  }
   if (m.toLowerCase().includes("user rejected")) return "Transaction rejected in wallet.";
   return "Claim failed. Please try again.";
 }
@@ -101,6 +105,16 @@ export function LeagueClaimPage() {
 
   const resolved =
     merkleRoot !== undefined && merkleRoot !== ZERO_MERKLE_ROOT && Boolean(leagueAddr && leagueChainId);
+
+  const { data: merkleRootSetAt } = useReadContract({
+    address: leagueAddr,
+    abi: leagueAbi,
+    functionName: "merkleRootSetAt",
+    chainId: leagueChainId,
+    query: {
+      enabled: Boolean(leagueAddr && leagueChainId && league),
+    },
+  });
 
   const merkleQuery = useQuery({
     queryKey: ["merkle-prize", leagueChainId, leagueAddr, walletAddress],
@@ -165,7 +179,17 @@ export function LeagueClaimPage() {
       });
     } catch (e) {
       const m = (e as Error | null | undefined)?.message ?? "";
-      setClaimError(claimErrorMessage(m));
+      let pastSweep = false;
+      if (resolved && merkleRootSetAt !== undefined) {
+        try {
+          const nowSec = BigInt(Math.floor(Date.now() / 1000));
+          const setAt = BigInt(merkleRootSetAt as unknown as bigint);
+          pastSweep = isPastSweepWindow({ merkleRootSetAtSec: setAt, nowSec });
+        } catch {
+          pastSweep = false;
+        }
+      }
+      setClaimError(claimErrorMessage(m, { isPastSweepWindow: pastSweep }));
     } finally {
       setClaimBusy(false);
     }
@@ -178,6 +202,8 @@ export function LeagueClaimPage() {
     switchChainAsync,
     walletAddress,
     writeContractAsync,
+    merkleRootSetAt,
+    resolved,
   ]);
 
   const onShareSuccess = useCallback(async () => {

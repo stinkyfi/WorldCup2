@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { type Address, getAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useChainId, useSwitchChain, useWriteContract } from "wagmi";
@@ -31,6 +31,10 @@ type Props = {
 };
 
 export function AdminDisputeResolution({ review, onSettled }: Props) {
+  return <AdminDisputeResolutionInner key={review.dispute.id} review={review} onSettled={onSettled} />;
+}
+
+function AdminDisputeResolutionInner({ review, onSettled }: Props) {
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
@@ -42,12 +46,6 @@ export function AdminDisputeResolution({ review, onSettled }: Props) {
   const [overrideKeys, setOverrideKeys] = useState<[string, string, string, string]>(() =>
     defaultOverrideKeys(review),
   );
-
-  useEffect(() => {
-    setOverrideKeys(defaultOverrideKeys(review));
-    setErr(null);
-    setOk(null);
-  }, [review.dispute.id]);
 
   const targetChain = review.dispute.chainId;
   const adminChain = useMemo(() => toAdminChainId(targetChain), [targetChain]);

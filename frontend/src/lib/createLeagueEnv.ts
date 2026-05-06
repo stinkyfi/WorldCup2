@@ -23,6 +23,13 @@ export function leagueFactoryAddress(chainId: CreateLeagueChainId): Address | un
   return parseAddress(typeof raw === "string" ? raw.trim() : undefined);
 }
 
+/** `VITE_WHITELIST_REGISTRY_8453`, `VITE_WHITELIST_REGISTRY_1`, `VITE_WHITELIST_REGISTRY_146` */
+export function whitelistRegistryAddress(chainId: CreateLeagueChainId): Address | undefined {
+  const key = `VITE_WHITELIST_REGISTRY_${chainId}` as const;
+  const raw = import.meta.env[key] as string | undefined;
+  return parseAddress(typeof raw === "string" ? raw.trim() : undefined);
+}
+
 /** Recipient for optional promotion USDC transfer (Story 3.2). */
 export function promotionUsdcRecipient(): Address | undefined {
   const raw = import.meta.env.VITE_PROMOTION_RECIPIENT as string | undefined;

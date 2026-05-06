@@ -11,6 +11,8 @@ const prizeQuerySchema = z.object({
   walletAddress: addressSchema,
 });
 
+const feeQuerySchema = prizeQuerySchema;
+
 function normalizeQuery(
   raw: Record<string, string | string[] | undefined>,
 ): Record<string, string | undefined> {
@@ -65,6 +67,60 @@ export const merkleClaimRoutes: FastifyPluginAsync = async (fastify) => {
       return sendSuccess(reply, {
         eligible: false as const,
         reason: "NO_PRIZE_LEAF" as const,
+      });
+    }
+
+    if (!isValidProofJson(row.proofJson)) {
+      return sendError(reply, 500, "INTERNAL_ERROR", "Invalid stored Merkle proof");
+    }
+
+    return sendSuccess(reply, {
+      eligible: true as const,
+      amountWei: row.amountWei.toString(),
+      proof: row.proofJson,
+      merkleRootHex: row.merkleRootHex,
+      leafHex: row.leafHex,
+      entryTokenSymbol: league.entryTokenSymbol,
+      entryTokenDecimals: league.entryTokenDecimals,
+      leagueTitle: league.title,
+    });
+  });
+
+  fastify.get("/merkle-claim/fee", async (request, reply) => {
+    const parsed = feeQuerySchema.safeParse(normalizeQuery(request.query as Record<string, string | string[] | undefined>));
+    if (!parsed.success) throw parsed.error;
+
+    const chainId = Number(parsed.data.chainId);
+    const leagueAddress = parsed.data.leagueAddress.toLowerCase();
+    const walletAddress = parsed.data.walletAddress.toLowerCase();
+
+    const league = await prisma.league.findFirst({
+      where: { chainId, contractAddress: { equals: leagueAddress, mode: "insensitive" } },
+      select: {
+        title: true,
+        entryTokenSymbol: true,
+        entryTokenDecimals: true,
+      },
+    });
+    if (!league) {
+      return sendError(reply, 404, "NOT_FOUND", "League not found");
+    }
+
+    const row = await prisma.merkleClaim.findUnique({
+      where: {
+        chainId_leagueAddress_claimantAddress_claimType: {
+          chainId,
+          leagueAddress,
+          claimantAddress: walletAddress,
+          claimType: 1,
+        },
+      },
+    });
+
+    if (!row) {
+      return sendSuccess(reply, {
+        eligible: false as const,
+        reason: "NO_FEE_LEAF" as const,
       });
     }
 

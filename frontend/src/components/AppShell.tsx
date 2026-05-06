@@ -15,6 +15,7 @@ const BASE_NAV_LINKS = [
   { to: "/browse", label: "Browse" },
   { to: "/my-leagues", label: "My Leagues" },
   { to: "/create", label: "Create" },
+  { to: "/whitelist", label: "Whitelist" },
 ] as const;
 
 const navClass = ({ isActive }: { isActive: boolean }) =>

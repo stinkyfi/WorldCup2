@@ -3,8 +3,90 @@ import assert from "node:assert/strict";
 import { deployWhitelistRegistry } from "./fixtures/index.js";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+const ONE_HUNDRED_USDC_6 = 100n * 1_000_000n;
 
 describe("WhitelistRegistry", () => {
+  // ─── Epic 9 / Story 9.1: requestWhitelist ───────────────────────────────────
+
+  describe("requestWhitelist", () => {
+    it("transfers fee, records request, and emits WhitelistRequested", async () => {
+      const { whitelistRegistry, tokenA, tokenB, owner, otherAccounts, connection } = await deployWhitelistRegistry();
+      const requester = otherAccounts[0];
+
+      // Configure fee token + amount (use tokenB as mock USDC).
+      await whitelistRegistry.write.setRequestFee([tokenB.address, ONE_HUNDRED_USDC_6]);
+
+      // Mint fee token to requester and approve registry for transferFrom.
+      await tokenB.write.mint([requester.account.address, ONE_HUNDRED_USDC_6]);
+      await tokenB.write.approve([whitelistRegistry.address, ONE_HUNDRED_USDC_6], { account: requester.account });
+
+      const before = await tokenB.read.balanceOf([whitelistRegistry.address]);
+
+      const txHash = await whitelistRegistry.write.requestWhitelist([tokenA.address], { account: requester.account });
+      const publicClient = await connection.viem.getPublicClient();
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      const after = await tokenB.read.balanceOf([whitelistRegistry.address]);
+      assert.equal(after - before, ONE_HUNDRED_USDC_6);
+
+      const events = await whitelistRegistry.getEvents.WhitelistRequested(
+        {},
+        { fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber }
+      );
+      assert.equal(events.length, 1);
+      assert.equal(events[0].args.token?.toLowerCase(), tokenA.address.toLowerCase());
+      assert.equal(events[0].args.requester?.toLowerCase(), requester.account.address.toLowerCase());
+
+      const req = await whitelistRegistry.read.requests([0n]);
+      assert.equal(req[0].toLowerCase(), tokenA.address.toLowerCase()); // token
+      assert.equal(req[1].toLowerCase(), requester.account.address.toLowerCase()); // requester
+      assert.ok(BigInt(req[2]) > 0n, "requestedAt should be set"); // requestedAt
+
+      // Owner is unused but ensures fixture sanity
+      assert.ok(owner.account.address.length === 42);
+    });
+
+    it("reverts when token already whitelisted", async () => {
+      const { whitelistRegistry, tokenA, tokenB, otherAccounts } = await deployWhitelistRegistry();
+      const requester = otherAccounts[0];
+
+      await whitelistRegistry.write.approveToken([tokenA.address]);
+      await whitelistRegistry.write.setRequestFee([tokenB.address, ONE_HUNDRED_USDC_6]);
+      await tokenB.write.mint([requester.account.address, ONE_HUNDRED_USDC_6]);
+      await tokenB.write.approve([whitelistRegistry.address, ONE_HUNDRED_USDC_6], { account: requester.account });
+
+      await assert.rejects(
+        whitelistRegistry.simulate.requestWhitelist([tokenA.address], { account: requester.account }),
+        (err: Error) => err.message.includes("TokenAlreadyWhitelisted")
+      );
+    });
+
+    it("reverts when fee not configured", async () => {
+      const { whitelistRegistry, tokenA, otherAccounts } = await deployWhitelistRegistry();
+      const requester = otherAccounts[0];
+
+      await assert.rejects(
+        whitelistRegistry.simulate.requestWhitelist([tokenA.address], { account: requester.account }),
+        (err: Error) => err.message.includes("RequestFeeNotConfigured")
+      );
+    });
+
+    it("reverts on duplicate request for same token", async () => {
+      const { whitelistRegistry, tokenA, tokenB, otherAccounts } = await deployWhitelistRegistry();
+      const requester = otherAccounts[0];
+
+      await whitelistRegistry.write.setRequestFee([tokenB.address, ONE_HUNDRED_USDC_6]);
+      await tokenB.write.mint([requester.account.address, ONE_HUNDRED_USDC_6 * 2n]);
+      await tokenB.write.approve([whitelistRegistry.address, ONE_HUNDRED_USDC_6 * 2n], { account: requester.account });
+
+      await whitelistRegistry.write.requestWhitelist([tokenA.address], { account: requester.account });
+
+      await assert.rejects(
+        whitelistRegistry.simulate.requestWhitelist([tokenA.address], { account: requester.account }),
+        (err: Error) => err.message.includes("TokenAlreadyRequested")
+      );
+    });
+  });
   // ─── AC1: Owner can approve a token ───────────────────────────────────────────
 
   describe("approveToken", () => {

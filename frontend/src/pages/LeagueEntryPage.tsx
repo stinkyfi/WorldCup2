@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { type Address, getAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -36,6 +36,15 @@ function ResolvedEntrySection(props: {
   leagueTitle: string;
   entryId: string | null;
 }) {
+  return <ResolvedEntrySectionInner key={`${props.leagueAddressRaw}:${props.entryId ?? ""}`} {...props} />;
+}
+
+function ResolvedEntrySectionInner(props: {
+  leagueAddressRaw: string;
+  leagueChainId: number;
+  leagueTitle: string;
+  entryId: string | null;
+}) {
   const { leagueAddressRaw, leagueChainId, leagueTitle, entryId } = props;
   const { address: walletAddress } = useAccount();
 
@@ -66,10 +75,6 @@ function ResolvedEntrySection(props: {
   }, [rowsMine, entryId, leagueAddressRaw, walletAddress]);
 
   const [manualEntryIndex, setManualEntryIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    setManualEntryIndex(null);
-  }, [entryId, leagueAddressRaw, walletAddress]);
 
   const effectiveEntryIndex = manualEntryIndex ?? defaultEntryIndex;
 

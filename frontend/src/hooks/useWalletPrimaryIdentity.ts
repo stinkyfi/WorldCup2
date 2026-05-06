@@ -1,21 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Address } from "viem";
 import { useChainId } from "wagmi";
 import { resolveWalletIdentity, shortAddress } from "@/lib/walletIdentity";
 
 export function useWalletPrimaryIdentity(address: string | undefined) {
   const chainId = useChainId();
-  const [label, setLabel] = useState(() => (address ? shortAddress(address) : ""));
+  const baseLabel = useMemo(() => (address ? shortAddress(address) : ""), [address]);
+  const [label, setLabel] = useState(() => baseLabel);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!address) {
-      setLabel("");
-      setAvatarUrl(null);
       return;
     }
-    setLabel(shortAddress(address));
-    setAvatarUrl(null);
     let cancelled = false;
     void resolveWalletIdentity(address as Address, chainId).then((r) => {
       if (cancelled) return;
@@ -27,5 +24,5 @@ export function useWalletPrimaryIdentity(address: string | undefined) {
     };
   }, [address, chainId]);
 
-  return { label, avatarUrl };
+  return { label: address ? label : "", avatarUrl: address ? avatarUrl : null, baseLabel };
 }

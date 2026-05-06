@@ -4,6 +4,7 @@ import { parseAbi } from "viem";
 export const leagueAbi = parseAbi([
   "function state() view returns (uint8)",
   "function merkleRoot() view returns (bytes32)",
+  "function merkleRootSetAt() view returns (uint256)",
   "function creator() view returns (address)",
   "function devWallet() view returns (address)",
   "function oracleController() view returns (address)",
@@ -12,6 +13,7 @@ export const leagueAbi = parseAbi([
   "function devFeeBps() view returns (uint256)",
   "function creatorFeeCap() view returns (uint256)",
   "function setMerkleRoot(bytes32 root)",
+  "function sweepUnclaimed()",
   "function lockTime() view returns (uint256)",
   "function disputeDepositToken() view returns (address)",
   "function disputeDepositAmount() view returns (uint256)",

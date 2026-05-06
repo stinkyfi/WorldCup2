@@ -55,7 +55,7 @@ const recordBodySchema = z.object({
 });
 
 function sanitizeDescription(s: string): string {
-  return s.trim().replace(/\u0000/g, "").slice(0, 8000);
+  return s.trim().replaceAll("\0", "").slice(0, 8000);
 }
 
 const disputeIdParamSchema = z.string().min(10).max(40);

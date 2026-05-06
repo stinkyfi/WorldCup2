@@ -18,6 +18,7 @@ import { privateKeyToAccount } from "viem/accounts";
 
 const ZERO_ROOT =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 const resultsPostedEvent = parseAbiItem(
   "event ResultsPosted(uint8 indexed groupId, address[4] rankings)",
@@ -66,6 +67,46 @@ async function allStageGroupsPosted(publicClient: PublicClient, oracleController
     if (!posted) return false;
   }
   return true;
+}
+
+export async function hasAnyUnsettledDispute(publicClient: PublicClient, leagueAddr: Address): Promise<boolean> {
+  try {
+    const disputeDepositToken = await publicClient.readContract({
+      address: leagueAddr,
+      abi: leagueAbi,
+      functionName: "disputeDepositToken",
+    });
+
+    // Disputes disabled → no "open dispute" gating required for root posting.
+    if ((disputeDepositToken as string).toLowerCase() === ZERO_ADDRESS) return false;
+
+    const disputeCount = await publicClient.readContract({
+      address: leagueAddr,
+      abi: leagueAbi,
+      functionName: "disputeCount",
+    });
+
+    const n = Number(disputeCount);
+    if (!Number.isFinite(n) || n <= 0) return false;
+
+    for (let i = 0; i < n; i++) {
+      const dispute = await publicClient.readContract({
+        address: leagueAddr,
+        abi: leagueAbi,
+        functionName: "disputeAt",
+        args: [BigInt(i)],
+      });
+
+      // disputeAt returns tuple: [disputant, groupId, isCreator, settled]
+      const settled = (dispute as readonly [Address, number, boolean, boolean])[3];
+      if (!settled) return true;
+    }
+
+    return false;
+  } catch {
+    // Be conservative: if we can't prove disputes are settled, do not finalize payouts.
+    return true;
+  }
 }
 
 /** Story 8.1 — build payout Merkle tree and post root via devWallet (`setMerkleRoot`). */
@@ -181,6 +222,12 @@ export async function runMerkleIndexerOnce(params?: { chainId?: number }): Promi
 
         const nowSec = BigInt(Math.floor(Date.now() / 1000));
         if (nowSec < lastTs + BigInt(delaySeconds)) continue;
+
+        const hasUnsettled = await hasAnyUnsettledDispute(publicClient, leagueAddr);
+        if (hasUnsettled) {
+          console.error(`merklePoster skip ${leagueAddrLower}: unsettled disputes exist`);
+          continue;
+        }
 
         const entryCount = Number(totalEntries);
         if (!Number.isFinite(entryCount) || entryCount <= 0) continue;

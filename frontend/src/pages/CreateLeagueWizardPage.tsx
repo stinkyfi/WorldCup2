@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getAddress } from "viem";
 import { useAccount, useChainId, useReadContract, useSwitchChain } from "wagmi";
@@ -43,6 +43,11 @@ function formatSubmitError(e: unknown): string {
 const stepLabels = ["Entry token", "Fees & limits", "Revision", "Promotion", "Review"] as const;
 
 export function CreateLeagueWizardPage() {
+  const walletChainId = useChainId();
+  return <CreateLeagueWizardInner key={walletChainId ?? "no-chain"} />;
+}
+
+function CreateLeagueWizardInner() {
   const navigate = useNavigate();
   const { address: walletAddress, isConnected } = useAccount();
   const walletChainId = useChainId();
@@ -69,13 +74,6 @@ export function CreateLeagueWizardPage() {
   const [immutabilityAck, setImmutabilityAck] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; text: string } | null>(null);
-
-  useEffect(() => {
-    setToken(null);
-    if (!isCreateLeagueChain(walletChainId)) {
-      setStep(1);
-    }
-  }, [walletChainId]);
 
   const factoryAddress = chainId ? leagueFactoryAddress(chainId) : undefined;
   const { data: creationFeeWei, isFetching: creationFeeLoading } = useReadContract({

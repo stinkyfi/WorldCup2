@@ -36,7 +36,7 @@ export async function resolveWalletIdentity(
     return { label: fallback, avatarUrl: null };
   }
 
-  let avatarUrl: string | null = null;
+  let avatarUrl: string | null;
   try {
     const normalized = normalize(chosenName);
     avatarUrl = await getEnsAvatar(mainnetPublic, { name: normalized });

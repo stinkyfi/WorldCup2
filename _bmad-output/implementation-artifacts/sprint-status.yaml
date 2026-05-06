@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-26
-last_updated: 2026-04-30
+last_updated: 2026-05-06
 project: DegenDraft
 project_key: NOKEY
 tracking_system: file-system
@@ -132,18 +132,18 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 8: Merkle Payout & Claims
   # ─────────────────────────────────────────────────────────────
-  epic-8: backlog
-  8-1-indexer-merkle-tree-build-and-root-posting: backlog
-  8-2-player-prize-claim: backlog
-  8-3-creator-and-dev-fee-claim: backlog
-  8-4-unclaimed-fund-sweep: backlog
+  epic-8: in-progress
+  8-1-indexer-merkle-tree-build-and-root-posting: review
+  8-2-player-prize-claim: review
+  8-3-creator-and-dev-fee-claim: review
+  8-4-unclaimed-fund-sweep: review
   epic-8-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────
   # Epic 9: Token Whitelist
   # ─────────────────────────────────────────────────────────────
-  epic-9: backlog
-  9-1-token-whitelist-request-submission: backlog
+  epic-9: in-progress
+  9-1-token-whitelist-request-submission: review
   9-2-public-whitelist-queue-and-voting: backlog
   9-3-admin-token-approval-and-rejection: backlog
   9-4-admin-token-de-whitelisting: backlog

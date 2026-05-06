@@ -17,7 +17,8 @@
     "oracle:redundant": "tsx src/cron/redundantOracle.ts",
     "alerts:telegram": "tsx src/cron/telegramAlerts.ts",
     "indexer:results": "tsx src/indexer/resultsPostedListener.ts",
-    "indexer:merkle": "tsx src/cron/runMerkleIndexer.ts"
+    "indexer:merkle": "tsx src/cron/runMerkleIndexer.ts",
+    "sweep:reminders": "tsx src/cron/unclaimedSweepReminders.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

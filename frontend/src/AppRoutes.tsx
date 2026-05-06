@@ -16,6 +16,7 @@ import { LeagueClaimPage } from "@/pages/LeagueClaimPage";
 import { LeagueLeaderboardPage } from "@/pages/LeagueLeaderboardPage";
 import { LeaguePredictPage } from "@/pages/LeaguePredictPage";
 import { MyLeaguesPlaceholderPage } from "@/pages/MyLeaguesPlaceholderPage";
+import { TokenWhitelistPage } from "@/pages/TokenWhitelistPage";
 
 export function AppRoutes() {
   return (
@@ -62,6 +63,14 @@ export function AppRoutes() {
           element={
             <RequireSiwe>
               <CreateLeagueWizardPage />
+            </RequireSiwe>
+          }
+        />
+        <Route
+          path="/whitelist"
+          element={
+            <RequireSiwe>
+              <TokenWhitelistPage />
             </RequireSiwe>
           }
         />

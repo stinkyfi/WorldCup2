@@ -92,36 +92,47 @@ export function extractPolymarketWinOddsByTeamName(
 ): { asOf: string; stale: boolean; percentByTeamName: Map<string, number> } {
   const asOf = res.data.asOf;
   const stale = Boolean(res.data.stale);
-  const raw = res.data.data as any;
+  const raw: unknown = res.data.data;
 
-  const markets: any[] = [];
-  const pushMarkets = (xs: any[]) => {
+  const markets: unknown[] = [];
+  const pushMarkets = (xs: unknown[]) => {
     for (const x of xs) markets.push(x);
   };
 
   // Polymarket Gamma "events" API: returns array of events, each with `markets: [...]`.
   if (Array.isArray(raw)) {
     for (const ev of raw) {
-      if (Array.isArray(ev?.markets)) pushMarkets(ev.markets);
+      if (ev && typeof ev === "object" && Array.isArray((ev as { markets?: unknown }).markets)) {
+        pushMarkets((ev as { markets: unknown[] }).markets);
+      }
     }
     // If the array already looks like markets, we will also process the array itself below.
     pushMarkets(raw);
-  } else if (Array.isArray(raw?.markets)) {
-    pushMarkets(raw.markets);
-  } else if (Array.isArray(raw?.data?.markets)) {
-    pushMarkets(raw.data.markets);
+  } else if (raw && typeof raw === "object" && Array.isArray((raw as { markets?: unknown }).markets)) {
+    pushMarkets((raw as { markets: unknown[] }).markets);
+  } else if (
+    raw &&
+    typeof raw === "object" &&
+    (raw as { data?: unknown }).data &&
+    typeof (raw as { data: unknown }).data === "object" &&
+    Array.isArray(((raw as { data: { markets?: unknown } }).data as { markets?: unknown }).markets)
+  ) {
+    pushMarkets(((raw as { data: { markets: unknown[] } }).data).markets);
   }
 
   const out = new Map<string, number>();
 
   for (const m of markets) {
+    if (!m || typeof m !== "object") continue;
+    const mm = m as Record<string, unknown>;
+
     // Gamma group-winner markets: use groupItemTitle + outcomePrices[0] ("Yes") as probability.
-    if (typeof m?.groupItemTitle === "string" && typeof m?.outcomePrices === "string") {
+    if (typeof mm.groupItemTitle === "string" && typeof mm.outcomePrices === "string") {
       try {
-        const prices = JSON.parse(m.outcomePrices) as unknown;
+        const prices = JSON.parse(mm.outcomePrices) as unknown;
         if (Array.isArray(prices) && prices.length >= 1) {
           const pct = coerceProbToPercent(prices[0]);
-          if (pct !== null) out.set(canonicalizeTeamName(m.groupItemTitle), pct);
+          if (pct !== null) out.set(canonicalizeTeamName(mm.groupItemTitle), pct);
         }
       } catch {
         /* ignore */
@@ -130,15 +141,16 @@ export function extractPolymarketWinOddsByTeamName(
     }
 
     // shape: outcomes: [{ name, ... }]
-    if (Array.isArray(m?.outcomes) && m.outcomes.length && typeof m.outcomes[0] === "object") {
-      for (const o of m.outcomes) {
-        const name = typeof o?.name === "string" ? o.name : typeof o?.title === "string" ? o.title : null;
+    if (Array.isArray(mm.outcomes) && mm.outcomes.length && typeof mm.outcomes[0] === "object") {
+      for (const o of mm.outcomes) {
+        const oo = o as Record<string, unknown>;
+        const name = typeof oo.name === "string" ? oo.name : typeof oo.title === "string" ? oo.title : null;
         if (!name) continue;
         const pct =
-          coerceProbToPercent(o?.probability) ??
-          coerceProbToPercent(o?.probabilityPercent) ??
-          coerceProbToPercent(o?.p) ??
-          coerceProbToPercent(o?.price);
+          coerceProbToPercent(oo.probability) ??
+          coerceProbToPercent(oo.probabilityPercent) ??
+          coerceProbToPercent(oo.p) ??
+          coerceProbToPercent(oo.price);
         if (pct === null) continue;
         out.set(canonicalizeTeamName(name), pct);
       }
@@ -146,11 +158,13 @@ export function extractPolymarketWinOddsByTeamName(
     }
 
     // shape: outcomes: string[], outcomePrices: string[]
-    if (Array.isArray(m?.outcomes) && m.outcomes.length && typeof m.outcomes[0] === "string") {
-      const names = m.outcomes as string[];
-      const prices = (Array.isArray(m?.outcomePrices) ? m.outcomePrices : Array.isArray(m?.prices) ? m.prices : null) as
-        | unknown[]
-        | null;
+    if (Array.isArray(mm.outcomes) && mm.outcomes.length && typeof mm.outcomes[0] === "string") {
+      const names = mm.outcomes as string[];
+      const prices = Array.isArray(mm.outcomePrices)
+        ? (mm.outcomePrices as unknown[])
+        : Array.isArray(mm.prices)
+          ? (mm.prices as unknown[])
+          : null;
       if (!prices || prices.length !== names.length) continue;
       for (let i = 0; i < names.length; i++) {
         const pct = coerceProbToPercent(prices[i]);

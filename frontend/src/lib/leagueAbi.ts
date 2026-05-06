@@ -21,6 +21,8 @@ export const leagueAbi = parseAbi([
   "function checkThreshold()",
   "function claimRefund()",
   "function claimPrize(uint256 amount, bytes32[] proof)",
+  "function claimFee(uint256 amount, bytes32[] proof)",
+  "function sweepUnclaimed()",
   "function creator() view returns (address)",
   "function fileDispute(uint8 groupId, bool isCreatorDispute)",
   "function disputeDepositToken() view returns (address)",
