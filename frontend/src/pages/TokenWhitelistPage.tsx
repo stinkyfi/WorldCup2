@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getAddress, type Address, type Hex } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
-import { useAccount, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { chainLabel } from "@/lib/leagueBrowse";
 import { fetchWhitelistedTokens } from "@/lib/fetchWhitelistedTokens";
@@ -36,7 +36,7 @@ function txExplorerUrl(chainId: number, txHash: Hex): string {
 }
 
 export function TokenWhitelistPage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address: walletAddress } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
 
@@ -48,6 +48,7 @@ export function TokenWhitelistPage() {
   const [success, setSuccess] = useState<{ txHash: Hex; explorerTxUrl: string } | null>(null);
 
   const chainId = chainIdRaw;
+  const publicClient = usePublicClient({ chainId });
   const isTokenValid = useMemo(() => isAddress(tokenRaw.trim()), [tokenRaw]);
   const tokenAddress = useMemo(() => {
     if (!isTokenValid) return undefined;
@@ -89,6 +90,124 @@ export function TokenWhitelistPage() {
     chainId,
     query: { enabled: Boolean(registry) },
   });
+
+  const { data: requestCount } = useReadContract({
+    address: registry,
+    abi: whitelistRegistryAbi,
+    functionName: "requestCount",
+    chainId,
+    query: { enabled: Boolean(registry) },
+  });
+
+  const queueLimit = 25;
+  const queueIds = useMemo(() => {
+    const n = requestCount ? Number(requestCount) : 0;
+    const ids: number[] = [];
+    const start = Math.max(0, n - queueLimit);
+    for (let i = n - 1; i >= start; i--) ids.push(i);
+    return ids;
+  }, [requestCount]);
+
+  const queueRowsQuery = useQuery({
+    queryKey: ["whitelist-queue", chainId, registry, queueIds.join(",")],
+    queryFn: async () => {
+      if (!registry || !publicClient) return [];
+      const rows = await Promise.all(
+        queueIds.map(async (id) => {
+          const [req, up, down, myVote] = await Promise.all([
+            publicClient.readContract({
+              address: registry,
+              abi: whitelistRegistryAbi,
+              functionName: "requests",
+              args: [BigInt(id)],
+            }),
+            publicClient.readContract({
+              address: registry,
+              abi: whitelistRegistryAbi,
+              functionName: "upvotes",
+              args: [BigInt(id)],
+            }),
+            publicClient.readContract({
+              address: registry,
+              abi: whitelistRegistryAbi,
+              functionName: "downvotes",
+              args: [BigInt(id)],
+            }),
+            walletAddress
+              ? publicClient.readContract({
+                  address: registry,
+                  abi: whitelistRegistryAbi,
+                  functionName: "voteOf",
+                  args: [BigInt(id), walletAddress],
+                })
+              : Promise.resolve(0n),
+          ]);
+
+          return {
+            id,
+            token: req[0] as Address,
+            requester: req[1] as Address,
+            requestedAt: Number(req[2]),
+            status: Number(req[3]),
+            upvotes: Number(up),
+            downvotes: Number(down),
+            myVote: Number(myVote),
+          };
+        }),
+      );
+      return rows;
+    },
+    enabled: Boolean(registry && publicClient) && queueIds.length > 0,
+    staleTime: 10_000,
+    retry: 1,
+  });
+
+  const [voteBusyId, setVoteBusyId] = useState<number | null>(null);
+  const onVote = useCallback(
+    async (requestId: number, isUpvote: boolean) => {
+      setError(null);
+      setSuccess(null);
+      if (!isConnected || !walletAddress) return;
+      if (!registry) return;
+      try {
+        setVoteBusyId(requestId);
+        await switchChainAsync({ chainId });
+        const txHash = await writeContractAsync({
+          address: registry,
+          abi: whitelistRegistryAbi,
+          functionName: "vote",
+          args: [BigInt(requestId), isUpvote],
+          chainId,
+        });
+        await waitForTransactionReceipt(wagmiConfig, { hash: txHash, chainId });
+        await queueRowsQuery.refetch();
+      } catch (e) {
+        const m = (e as Error | null | undefined)?.message ?? "";
+        if (m.toLowerCase().includes("user rejected")) {
+          setError("Transaction rejected in wallet.");
+        } else if (m.includes("AlreadyVoted")) {
+          setError("You already voted on this request.");
+        } else if (m.includes("RequestNotPending")) {
+          setError("Voting is only open while the request is pending.");
+        } else {
+          setError("Vote failed. Please try again.");
+        }
+      } finally {
+        setVoteBusyId(null);
+      }
+    },
+    [
+      chainId,
+      isConnected,
+      queueRowsQuery,
+      registry,
+      switchChainAsync,
+      walletAddress,
+      writeContractAsync,
+      setError,
+      setSuccess,
+    ],
+  );
 
   const submitEnabled =
     Boolean(isConnected && registry && tokenAddress) && !busy && !alreadyWhitelisted && !whitelistedTokensQuery.isLoading;
@@ -226,6 +345,82 @@ export function TokenWhitelistPage() {
             </div>
           </div>
         ) : null}
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-foreground">Recent requests</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Latest submissions on this chain (history + pending). Showing the newest {queueLimit} requests. Community votes
+          help admins prioritise review; you can only vote while a request is pending, once per wallet per request.
+        </p>
+
+        <div className="mt-4 rounded-xl border border-accent/15 bg-surface/70 p-5 backdrop-blur">
+          {queueRowsQuery.isLoading ? (
+            <div className="text-sm text-muted-foreground">Loading queue…</div>
+          ) : queueRowsQuery.data?.length ? (
+            <div className="space-y-3">
+              {queueRowsQuery.data.map((r) => {
+                const statusLabel = r.status === 1 ? "Approved" : r.status === 2 ? "Rejected" : "Pending";
+                const hasVoted = r.myVote === 1 || r.myVote === 2;
+                const voteOpen = r.status === 0;
+                return (
+                  <div
+                    key={r.id}
+                    className="rounded-lg border border-border/70 bg-background/40 px-4 py-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium text-foreground">
+                          #{r.id} · {statusLabel}
+                        </div>
+                        <div className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                          chain: {chainLabel(chainId)} ({chainId})
+                          <br />
+                          token: {r.token}
+                          <br />
+                          requester: {r.requester}
+                          <br />
+                          submitted: {new Date(r.requestedAt * 1000).toISOString()}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs text-muted-foreground">
+                          ▲ {r.upvotes} · ▼ {r.downvotes}
+                        </div>
+
+                        {isConnected && walletAddress ? (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant={r.myVote === 1 ? "default" : "secondary"}
+                              size="sm"
+                              disabled={!voteOpen || hasVoted || voteBusyId === r.id}
+                              onClick={() => void onVote(r.id, true)}
+                            >
+                              Upvote
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={r.myVote === 2 ? "default" : "secondary"}
+                              size="sm"
+                              disabled={!voteOpen || hasVoted || voteBusyId === r.id}
+                              onClick={() => void onVote(r.id, false)}
+                            >
+                              Downvote
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">No requests yet.</div>
+          )}
+        </div>
       </div>
     </div>
   );

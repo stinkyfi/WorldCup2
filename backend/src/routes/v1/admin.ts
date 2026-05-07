@@ -1,7 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
 import { prisma } from "../../db.js";
 import { sendError, sendSuccess } from "../../lib/envelope.js";
+import { analyzeBytecodeHex } from "../../lib/tokenBytecodeSurface.js";
 import { SESSION_COOKIE_NAME } from "./auth.js";
+import { LEAGUE_CREATION_CHAIN_IDS } from "./tokens.js";
 import { type Address, createPublicClient, getAddress, http } from "viem";
 import { oracleControllerAbi } from "../../lib/oracleControllerAbi.js";
 
@@ -32,6 +35,27 @@ function mustGetEnv(name: string): string {
   if (!v) throw new Error(`Missing env var: ${name}`);
   return v;
 }
+
+function normalizeQuery(
+  raw: Record<string, string | string[] | undefined>,
+): Record<string, string | undefined> {
+  const q: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    q[k] = Array.isArray(v) ? v[0] : v;
+  }
+  return q;
+}
+
+const adminTokenSurfaceQuerySchema = z.object({
+  chainId: z.coerce
+    .number()
+    .int()
+    .positive()
+    .refine((n) => (LEAGUE_CREATION_CHAIN_IDS as readonly number[]).includes(n), {
+      message: `chainId must be one of: ${LEAGUE_CREATION_CHAIN_IDS.join(", ")}`,
+    }),
+  token: z.string().regex(/^0x[a-fA-F0-9]{40}$/i, "Invalid token address"),
+});
 
 /** Story 2.3 — minimal admin-gated endpoint to enforce server-side `isAdmin`. */
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
@@ -156,5 +180,38 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     );
 
     return sendSuccess(reply, { chains });
+  });
+
+  /** Epic 9 — bytecode heuristics for admin whitelist review (FR53). */
+  fastify.get("/admin/token-surface-risk", async (request, reply) => {
+    const session = await sessionFromRequest(request);
+    if (!session) return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    if (!session.isAdmin) {
+      return sendError(reply, 403, "FORBIDDEN", "You do not have admin access for the network your session is bound to.");
+    }
+
+    const parsed = adminTokenSurfaceQuerySchema.safeParse(normalizeQuery(request.query as Record<string, string | string[] | undefined>));
+    if (!parsed.success) {
+      throw parsed.error;
+    }
+    const chainId = parsed.data.chainId;
+    const token = getAddress(parsed.data.token.toLowerCase());
+
+    let bytecode: `0x${string}` | undefined;
+    try {
+      const rpcUrl = mustGetEnv(`RPC_URL_${chainId}`);
+      const publicClient = createPublicClient({ transport: http(rpcUrl) });
+      bytecode = await publicClient.getBytecode({ address: token as Address });
+    } catch (e) {
+      return sendError(reply, 502, "RPC_ERROR", (e as Error | null | undefined)?.message ?? "RPC read failed.");
+    }
+
+    const bc = bytecode ?? "0x";
+    const analyzed = analyzeBytecodeHex(bc);
+    return sendSuccess(reply, {
+      chainId,
+      token,
+      ...analyzed,
+    });
   });
 };

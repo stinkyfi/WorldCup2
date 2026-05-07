@@ -41,12 +41,33 @@ contract WhitelistRegistry is Ownable {
     /// @notice Reverts when submitting a request for a token already requested.
     error TokenAlreadyRequested(address token);
 
+    /// @notice Reverts when owner uses `approveToken` while a pending queue request exists for that token (use `approveRequest` first).
+    error TokenHasPendingWhitelistRequest(address token);
+
     /// @notice Token whitelist request record (append-only list; status handled in later stories).
     struct WhitelistRequest {
         address token;
         address requester;
         uint64 requestedAt;
+        uint8 status; // 0=Pending, 1=Approved, 2=Rejected
+        /// @notice Actual fee-token balance received at request time (handles fee-on-transfer fee tokens).
+        uint256 feeEscrowed;
     }
+
+    /// @notice Reverts when trying to vote twice on a request.
+    error AlreadyVoted(uint256 requestId, address voter);
+
+    /// @notice Reverts when requestId is out of range.
+    error InvalidRequestId(uint256 requestId);
+
+    /// @notice Reverts when a request is not in Pending status.
+    error RequestNotPending(uint256 requestId);
+
+    /// @notice Emitted when a wallet votes on a request.
+    event WhitelistVoted(uint256 indexed requestId, address indexed voter, bool isUpvote);
+
+    /// @notice Emitted when the owner rejects a whitelist request and refunds escrowed fee (Story 9.3).
+    event TokenRejected(uint256 indexed requestId, address indexed token, address indexed requester, uint256 refundAmount);
 
     /// @notice ERC-20 token used to pay the whitelist request fee (e.g. USDC on this chain).
     address public requestFeeToken;
@@ -59,6 +80,13 @@ contract WhitelistRegistry is Ownable {
 
     /// @notice Prevent duplicate requests per token (per-chain).
     mapping(address => bool) public hasPendingRequest;
+
+    /// @notice Votes are tracked per (requestId, voter).
+    mapping(uint256 => mapping(address => uint8)) public voteOf; // 0=none, 1=up, 2=down
+
+    /// @notice Aggregate vote counts per requestId.
+    mapping(uint256 => uint256) public upvotes;
+    mapping(uint256 => uint256) public downvotes;
 
     /// @param initialOwner The address that receives initial ownership (OZ v5 requirement).
     constructor(address initialOwner) Ownable(initialOwner) {}
@@ -78,15 +106,83 @@ contract WhitelistRegistry is Ownable {
         if (requestFeeToken == address(0) || requestFeeAmount == 0) revert RequestFeeNotConfigured();
 
         hasPendingRequest[token] = true;
+        uint256 balBefore = IERC20(requestFeeToken).balanceOf(address(this));
         IERC20(requestFeeToken).safeTransferFrom(msg.sender, address(this), requestFeeAmount);
-        requests.push(WhitelistRequest({ token: token, requester: msg.sender, requestedAt: uint64(block.timestamp) }));
+        uint256 received = IERC20(requestFeeToken).balanceOf(address(this)) - balBefore;
+        requests.push(
+            WhitelistRequest({
+                token: token,
+                requester: msg.sender,
+                requestedAt: uint64(block.timestamp),
+                status: 0,
+                feeEscrowed: received
+            })
+        );
         emit WhitelistRequested(token, block.chainid, msg.sender);
+    }
+
+    function requestCount() external view returns (uint256) {
+        return requests.length;
+    }
+
+    function getRequests(uint256 offset, uint256 limit) external view returns (WhitelistRequest[] memory out) {
+        uint256 n = requests.length;
+        if (offset >= n) return new WhitelistRequest[](0);
+        uint256 end = offset + limit;
+        if (end > n) end = n;
+        out = new WhitelistRequest[](end - offset);
+        for (uint256 i = offset; i < end; i++) {
+            out[i - offset] = requests[i];
+        }
+    }
+
+    function vote(uint256 requestId, bool isUpvote) external {
+        if (requestId >= requests.length) revert InvalidRequestId(requestId);
+        if (requests[requestId].status != 0) revert RequestNotPending(requestId);
+        if (voteOf[requestId][msg.sender] != 0) revert AlreadyVoted(requestId, msg.sender);
+        voteOf[requestId][msg.sender] = isUpvote ? 1 : 2;
+        if (isUpvote) {
+            upvotes[requestId] += 1;
+        } else {
+            downvotes[requestId] += 1;
+        }
+        emit WhitelistVoted(requestId, msg.sender, isUpvote);
+    }
+
+    /// @notice Approve a pending whitelist request (owner). Escrowed fee is retained by the registry.
+    function approveRequest(uint256 requestId) external onlyOwner {
+        if (requestId >= requests.length) revert InvalidRequestId(requestId);
+        WhitelistRequest storage r = requests[requestId];
+        if (r.status != 0) revert RequestNotPending(requestId);
+        address tok = r.token;
+        if (tok == address(0) || tok.code.length == 0) revert InvalidTokenAddress(tok);
+        if (!_tokens.add(tok)) revert TokenAlreadyWhitelisted(tok);
+        r.status = 1;
+        hasPendingRequest[tok] = false;
+        emit TokenApproved(tok);
+    }
+
+    /// @notice Reject a pending whitelist request (owner); refunds exact escrow received at submit time (FoT-safe).
+    function rejectRequest(uint256 requestId) external onlyOwner {
+        if (requestId >= requests.length) revert InvalidRequestId(requestId);
+        WhitelistRequest storage r = requests[requestId];
+        if (r.status != 0) revert RequestNotPending(requestId);
+        address tok = r.token;
+        address payer = r.requester;
+        uint256 escrow = r.feeEscrowed;
+        r.status = 2;
+        hasPendingRequest[tok] = false;
+        if (escrow > 0) {
+            IERC20(requestFeeToken).safeTransfer(payer, escrow);
+        }
+        emit TokenRejected(requestId, tok, payer, escrow);
     }
 
     /// @notice Approve a token for use in leagues on this chain.
     /// @param token The ERC-20 token address to whitelist.
     function approveToken(address token) external onlyOwner {
         if (token == address(0) || token.code.length == 0) revert InvalidTokenAddress(token);
+        if (hasPendingRequest[token]) revert TokenHasPendingWhitelistRequest(token);
         if (!_tokens.add(token)) revert TokenAlreadyWhitelisted(token);
         emit TokenApproved(token);
     }

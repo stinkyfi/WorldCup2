@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-26
-last_updated: 2026-05-06
+last_updated: 2026-05-07
 project: DegenDraft
 project_key: NOKEY
 tracking_system: file-system
@@ -144,8 +144,8 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   epic-9: in-progress
   9-1-token-whitelist-request-submission: review
-  9-2-public-whitelist-queue-and-voting: backlog
-  9-3-admin-token-approval-and-rejection: backlog
+  9-2-public-whitelist-queue-and-voting: done
+  9-3-admin-token-approval-and-rejection: done
   9-4-admin-token-de-whitelisting: backlog
   epic-9-retrospective: optional
 
