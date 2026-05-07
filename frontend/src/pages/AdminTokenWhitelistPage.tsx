@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { type Address, type Hex } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -39,6 +39,11 @@ export function AdminTokenWhitelistPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<{ hash: Hex; url: string } | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<Address | null>(null);
+
+  useEffect(() => {
+    setConfirmRemove(null);
+  }, [chainIdRaw]);
 
   const { data: requestCount } = useReadContract({
     address: registry,
@@ -85,6 +90,27 @@ export function AdminTokenWhitelistPage() {
     retry: 1,
   });
 
+  const approvedQuery = useQuery({
+    queryKey: ["registry-approved-tokens", chainId, registry],
+    queryFn: async (): Promise<Address[]> => {
+      if (!registry || !publicClient) return [];
+      const addrs = await publicClient.readContract({
+        address: registry,
+        abi: whitelistRegistryAbi,
+        functionName: "getWhitelistedTokens",
+      });
+      return [...addrs] as Address[];
+    },
+    enabled: Boolean(registry && publicClient),
+    staleTime: 12_000,
+    retry: 1,
+  });
+
+  const approvedSorted = useMemo(() => {
+    const list = approvedQuery.data ?? [];
+    return [...list].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [approvedQuery.data]);
+
   const pendingRows = useMemo(() => (queueQuery.data ?? []).filter((r) => r.status === 0), [queueQuery.data]);
 
   const riskQuery = useQuery({
@@ -111,7 +137,8 @@ export function AdminTokenWhitelistPage() {
   const refresh = useCallback(() => {
     void queueQuery.refetch();
     void riskQuery.refetch();
-  }, [queueQuery, riskQuery]);
+    void approvedQuery.refetch();
+  }, [approvedQuery, queueQuery, riskQuery]);
 
   const onApprove = useCallback(
     async (requestId: number) => {
@@ -175,6 +202,55 @@ export function AdminTokenWhitelistPage() {
     [chainId, isConnected, refresh, registry, switchChainAsync, walletAddress, writeContractAsync],
   );
 
+  const onConfirmDeWhitelist = useCallback(async () => {
+    const token = confirmRemove;
+    setError(null);
+    setLastTx(null);
+    if (!token || !isConnected || !walletAddress || !registry) {
+      setError("Connect the registry owner wallet and select a token.");
+      return;
+    }
+    try {
+      setBusyId(`d-${token.toLowerCase()}`);
+      await switchChainAsync({ chainId });
+      const hash = await writeContractAsync({
+        address: registry,
+        abi: whitelistRegistryAbi,
+        functionName: "removeToken",
+        args: [token],
+        chainId,
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash, chainId });
+      setLastTx({ hash, url: txExplorerUrl(chainId, hash) });
+      setConfirmRemove(null);
+      refresh();
+    } catch (e) {
+      const m = (e as Error | null | undefined)?.message ?? "";
+      if (m.toLowerCase().includes("user rejected")) {
+        setError("Transaction rejected in wallet.");
+      } else if (m.includes("OwnableUnauthorizedAccount")) {
+        setError("Connected wallet is not the registry owner (deployer). Use the owner key to de-whitelist.");
+      } else if (m.includes("TokenNotWhitelisted")) {
+        setError("That token is not on-chain whitelisted anymore (already removed or stale view). Refresh and try again.");
+      } else {
+        setError("De-whitelist failed.");
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }, [
+    chainId,
+    confirmRemove,
+    isConnected,
+    refresh,
+    registry,
+    switchChainAsync,
+    walletAddress,
+    writeContractAsync,
+  ]);
+
+  const refreshBusy = queueQuery.isFetching || riskQuery.isFetching || approvedQuery.isFetching;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -183,6 +259,15 @@ export function AdminTokenWhitelistPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Approve or reject on-chain requests. Rejections refund the exact fee-token amount escrowed at submission
             (handles fee-on-transfer fee tokens). Bytecode hints are heuristic only.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Approve/reject/de-whitelist transactions must be signed by the <strong className="text-foreground">registry owner</strong>{" "}
+            (contract <code className="text-xs"> Ownable</code>); app SIWE admin status alone does not grant on-chain powers.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            De-whitelisting removes a token only for <span className="text-foreground">new</span> leagues on this chain. Existing leagues
+            that already use it keep running. To allow the token again, use direct <code className="text-[0.65rem]">approveToken</code> or a
+            new community request flow after any manual policy checks.
           </p>
         </div>
         <Button type="button" variant="secondary" className="min-h-11" asChild>
@@ -207,7 +292,7 @@ export function AdminTokenWhitelistPage() {
           </select>
         </label>
         <div className="flex items-end gap-2">
-          <Button type="button" variant="secondary" className="min-h-11" onClick={() => refresh()} disabled={queueQuery.isFetching}>
+          <Button type="button" variant="secondary" className="min-h-11" onClick={() => refresh()} disabled={refreshBusy}>
             Refresh
           </Button>
         </div>
@@ -305,6 +390,73 @@ export function AdminTokenWhitelistPage() {
               </div>
             );
           })
+        )}
+      </div>
+
+      <div className="mt-10">
+        <h2 className="text-lg font-semibold text-foreground">Approved tokens on this chain</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          On-chain list from <code className="text-xs">getWhitelistedTokens()</code>. The public API catalog may lag until re-indexed.
+        </p>
+
+        {!registry ? null : approvedQuery.isLoading ? (
+          <p className="mt-3 text-sm text-muted-foreground">Loading approved tokens…</p>
+        ) : approvedSorted.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No approved tokens on this registry deployment.</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {confirmRemove ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+                <div className="font-medium text-foreground">Confirm de-whitelist</div>
+                <p className="mt-2 break-all font-mono text-xs text-muted-foreground">{confirmRemove}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  This removes the token from the on-chain whitelist for <span className="text-foreground">new</span> leagues only. It cannot
+                  be undone on-chain except by whitelisting again (e.g. owner <code className="text-[0.65rem]">approveToken</code>).
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="min-h-11"
+                    disabled={Boolean(busyId)}
+                    onClick={() => setConfirmRemove(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className="min-h-11 border border-destructive/50 bg-destructive/90 text-destructive-foreground hover:bg-destructive"
+                    disabled={Boolean(busyId) || !isConnected}
+                    onClick={() => void onConfirmDeWhitelist()}
+                  >
+                    {busyId === `d-${confirmRemove.toLowerCase()}` ? "…" : "Confirm remove from whitelist"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {approvedSorted.map((t) => {
+              const busyThis = busyId === `d-${t.toLowerCase()}`;
+              const otherPending = Boolean(confirmRemove && confirmRemove !== t);
+              return (
+                <div
+                  key={t}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/40 px-4 py-3 text-sm"
+                >
+                  <div className="min-w-0 break-all font-mono text-xs text-muted-foreground">{t}</div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="min-h-11 shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
+                    disabled={Boolean(busyId) || !isConnected || otherPending}
+                    onClick={() => setConfirmRemove(t)}
+                  >
+                    {busyThis ? "…" : "De-whitelist"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

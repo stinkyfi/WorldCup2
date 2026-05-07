@@ -1,6 +1,6 @@
 # Story 9.4: Admin Token De-whitelisting
 
-Status: ready-for-dev
+Status: review
 
 <!-- Ultimate context compiled for dev-story; validate optional: validate-create-story -->
 
@@ -33,24 +33,29 @@ So that problematic tokens can be prevented from being used in new leagues witho
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: ABI + typed reads/writes for admin flow (AC: #1–#3)  
-  - [ ] Extend `whitelistRegistryAbi` with at least **`removeToken(address)`** and **`getWhitelistedTokens() view returns (address[])`**.  
+- [x] Task 1: ABI + typed reads/writes for admin flow (AC: #1–#3)  
+  - [x] Extend `whitelistRegistryAbi` with at least **`removeToken(address)`** and **`getWhitelistedTokens() view returns (address[])`**.  
       *Note:* `removeToken`, `approveToken`, and `TokenRemoved`/`TokenApproved` already exist **on-contract** (`contracts/contracts/WhitelistRegistry.sol`); ABI was trimmed to story 9.1–9.3 surfaces only — restore what the admin UI needs.*  
-  - [ ] Optionally add `event TokenRemoved(address indexed token)` to ABI if the UI parses logs (nice-to-have).
+  - [x] Optionally add `event TokenRemoved(address indexed token)` to ABI if the UI parses logs (nice-to-have).  
+  - [x] Added `approveToken`, `TokenApproved`, `TokenRemoved` to ABI for parity with explorer/event tooling.
 
-- [ ] Task 2: Admin UI section — list + de-whitelist (AC: #1–#4)  
-  - [ ] On `frontend/src/pages/AdminTokenWhitelistPage.tsx`, after the pending-requests block add **“Approved tokens on this chain”** (or similar): load addresses via **`getWhitelistedTokens**` filtered through `whitelistRegistryAddress(chainId)` + `publicClient`.  
-  - [ ] For each address: show monospace address row + **De-whitelist** (secondary/destructive).  
-  - [ ] Confirmation step before **`writeContractAsync({ functionName: "removeToken", args: [token] })`**, same **`switchChainAsync` + `waitForTransactionReceipt`** pattern as approve/reject.  
-  - [ ] Successful tx: **`lastTx`** + refetch whitelist list (+ optional refetch overlap with `/tokens` API caches if TanStack caches used elsewhere — do not widen scope unless needed).  
+- [x] Task 2: Admin UI section — list + de-whitelist (AC: #1–#4)  
+  - [x] On `frontend/src/pages/AdminTokenWhitelistPage.tsx`, after the pending-requests block add **“Approved tokens on this chain”** (or similar): load addresses via **`getWhitelistedTokens**` filtered through `whitelistRegistryAddress(chainId)` + `publicClient`.  
+  - [x] For each address: show monospace address row + **De-whitelist** (secondary/destructive).  
+  - [x] Confirmation step before **`writeContractAsync({ functionName: "removeToken", args: [token] })`**, same **`switchChainAsync` + `waitForTransactionReceipt`** pattern as approve/reject.  
+  - [x] Successful tx: **`lastTx`** + refetch whitelist list (+ optional refetch overlap with `/tokens` API caches if TanStack caches used elsewhere — do not widen scope unless needed).  
 
-- [ ] Task 3: Behaviour & regressions guardrails  
-  - [ ] **Owner vs app admin:** Preserve Story 9.3 reality — txs must succeed with **deployer/registry owner wallet** connected; copy can mirror approve/reject (no false promise that SIWE-admin alone suffices if `msg.sender != owner`).  
-  - [ ] Preserve existing pending-request cards, bytecode hints, approve/reject; do not regress routing (`AppRoutes.tsx` unchanged unless you add anchors only).  
+- [x] Task 3: Behaviour & regressions guardrails  
+  - [x] **Owner vs app admin:** Preserve Story 9.3 reality — txs must succeed with **deployer/registry owner wallet** connected; copy can mirror approve/reject (no false promise that SIWE-admin alone suffices if `msg.sender != owner`).  
+  - [x] Preserve existing pending-request cards, bytecode hints, approve/reject; do not regress routing (`AppRoutes.tsx` unchanged unless you add anchors only).  
 
-- [ ] Task 4: Contracts + frontend quality gates  
-  - [ ] `contracts`: existing `WhitelistRegistry` tests already cover **`removeToken`** — add coverage **only** if gaps appear (e.g. **double-remove** UX message).  
-  - [ ] **`npm run lint`** for touched stacks; **`npm run test`** in `contracts` whitelist file; **`npm run test`** in `frontend`.  
+- [x] Task 4: Contracts + frontend quality gates  
+  - [x] `contracts`: existing `WhitelistRegistry` tests already cover **`removeToken`** — add coverage **only** if gaps appear (e.g. **double-remove** UX message).  
+  - [x] **`npm run lint`** for touched stacks; **`npm run test`** in `contracts` whitelist file; **`npm run test`** in `frontend`.  
+
+## Change Log
+
+- 2026-05-07: Implemented admin de-whitelist UI + ABI; Vitest ABI guardrail; Epic 9.4 marked **review**.
 
 ---
 
@@ -63,7 +68,7 @@ So that problematic tokens can be prevented from being used in new leagues witho
 | On-chain **`removeToken(address)` onlyOwner**, **`getWhitelistedTokens()`**, **`TokenRemoved`** | Implemented in **`WhitelistRegistry.sol`** (see **`removeToken` ~L193**) — multi-chain handled by switching chain + RPC in UI like Story 9.3. |
 | Contract tests **`removeToken`**, **`getWhitelistedTokens`**, **`TokenNotWhitelisted`** | **`contracts/test/WhitelistRegistry.test.ts`** `describe("removeToken")`, `describe("getWhitelistedTokens")` — regression baseline. |
 | Admin shell + pending queue + bytecode risk API | **`AdminTokenWhitelistPage.tsx`**, **`fetchTokenSurfaceRisk.ts`**, **`backend/src/routes/v1/admin.ts`** — extend page only unless you deliberately add APIs (not needed for ERC). |
-| **`whitelistRegistryAbi`** | Incomplete for this story — **missing** **`removeToken`**, **`getWhitelistedTokens`** (and possibly events). |
+| **`whitelistRegistryAbi`** | Extended in 9.4 with **`removeToken`**, **`getWhitelistedTokens`**, **`approveToken`**, **`TokenApproved`**, **`TokenRemoved`**. |
 
 ### Contract / PRD wording alignment
 
@@ -122,12 +127,21 @@ No `project-context.md` found in-repo; rely on **`architecture.md` WhitelistRegi
 
 ### Agent Model Used
 
-_(filled at implementation time)_  
+GPT-5.2 (Cursor agent)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Extended `whitelistRegistryAbi` with `getWhitelistedTokens`, `removeToken`, `approveToken`, and whitelist events (`TokenApproved`, `TokenRemoved`) plus existing story surfaces.
+- `AdminTokenWhitelistPage`: TanStack **`approvedQuery`** backed by **`getWhitelistedTokens`**, sorted list, **two-step confirmation** banner, **`removeToken` tx**, **`BusyId`** `d-{addr}`, **`refresh`** refetches queue/risk/approved; chain switch clears **`confirmRemove`**.
+- Indexed API catalog drift called out inline (on-chain reads are authoritative for this screen).
+- **Quality:** `npx hardhat test test/WhitelistRegistry.test.ts` (**27 passing**); `frontend` **`npm run test`** (**26 passing** incl. **`whitelistRegistryAbi.test.ts`**); `frontend` **`npm run lint`** clean.
+
 ### File List
 
-_(filled at implementation time — expect at minimum `whitelistRegistryAbi.ts`, `AdminTokenWhitelistPage.tsx`, possibly snapshots/tests.)_
+- `frontend/src/lib/whitelistRegistryAbi.ts`
+- `frontend/src/lib/whitelistRegistryAbi.test.ts` (new)
+- `frontend/src/pages/AdminTokenWhitelistPage.tsx`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/9-4-admin-token-de-whitelisting.md` (this file)
