@@ -146,7 +146,7 @@ development_status:
   9-1-token-whitelist-request-submission: done
   9-2-public-whitelist-queue-and-voting: done
   9-3-admin-token-approval-and-rejection: done
-  9-4-admin-token-de-whitelisting: backlog
+  9-4-admin-token-de-whitelisting: ready-for-dev
   epic-9-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────
