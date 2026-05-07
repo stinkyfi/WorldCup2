@@ -1,6 +1,6 @@
 # Story 9.1: Token Whitelist Request Submission
 
-Status: review
+Status: done
 
 ## Story
 
@@ -46,12 +46,13 @@ so that the token can become available for use as a league entry currency.
   - [x] `contracts` tests + lint
   - [x] `frontend` tests + lint
 
+## Review checklist — 2026-05-07
+
+Shipped with Epic 9; re-confirmed with Stories 9.2–9.3: on-chain `requestWhitelist` + fee, `WhitelistRequested`, `/whitelist` form, pre-tx “already whitelisted” check via indexed list, success + queue visibility.
+
 ## Dev Notes
 
-- Current `contracts/contracts/WhitelistRegistry.sol` only supports admin approve/remove; Story 9.1 requires extending it with request mechanics + fee.
-- Frontend already knows canonical USDC addresses per chain in `frontend/src/lib/createLeagueEnv.ts` (can be used as default fee token).
-
-## Dev Agent Record
+- Later stories extended the same registry (`vote`, escrow, `approveRequest` / `rejectRequest`); this story remains the fee + request submission slice.
 
 ### Agent Model Used
 
