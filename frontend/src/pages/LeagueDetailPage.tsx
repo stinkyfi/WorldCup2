@@ -19,6 +19,8 @@ import { leagueAbi } from "@/lib/leagueAbi";
 import { chainLabel } from "@/lib/leagueBrowse";
 import { formatTimeToLock, formatTokenWei } from "@/lib/leagueDisplay";
 import { fetchLeagueDetail } from "@/lib/leagueDetail";
+import { useSiweSession } from "@/lib/siweAuthContext";
+import { apiUrl } from "@/lib/apiBase";
 import { wagmiConfig } from "@/wagmi";
 
 function isAddress(s: string): boolean {
@@ -39,6 +41,15 @@ export function LeagueDetailPage() {
   const { writeContractAsync } = useWriteContract();
   const [refundToast, setRefundToast] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [refundBusy, setRefundBusy] = useState<null | "checking" | "claiming">(null);
+
+  // Report league state
+  const { authStatus } = useSiweSession();
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState<"Scam" | "Inappropriate" | "Other">("Scam");
+  const [reportDescription, setReportDescription] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   const query = useQuery({
     queryKey: ["league-detail", validAddress],
@@ -432,6 +443,114 @@ export function LeagueDetailPage() {
               creatorAddressFromApi={league.creatorAddress}
             />
           ) : null}
+
+          {/* ─── Report League ──────────────────────────────────────────── */}
+          <div className="rounded-md border border-border/50 bg-muted/20 px-4 py-4">
+            {reportSubmitted ? (
+              <p className="text-sm text-green-600">
+                Report submitted — our team will review it shortly.
+              </p>
+            ) : showReportModal ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Report this league</p>
+                {reportError ? (
+                  <p className="text-sm text-destructive">{reportError}</p>
+                ) : null}
+                <div className="grid gap-1">
+                  <label htmlFor="reportReason" className="text-xs font-medium text-muted-foreground">Reason</label>
+                  <select
+                    id="reportReason"
+                    className="min-h-10 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value as "Scam" | "Inappropriate" | "Other")}
+                    disabled={reportBusy}
+                  >
+                    <option value="Scam">Scam</option>
+                    <option value="Inappropriate">Inappropriate</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="grid gap-1">
+                  <label htmlFor="reportDesc" className="text-xs font-medium text-muted-foreground">Description (optional, max 500 chars)</label>
+                  <textarea
+                    id="reportDesc"
+                    className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    maxLength={500}
+                    value={reportDescription}
+                    onChange={(e) => setReportDescription(e.target.value)}
+                    disabled={reportBusy}
+                    placeholder="Describe the issue…"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    className="min-h-10"
+                    disabled={reportBusy}
+                    onClick={async () => {
+                      if (!leagueChainId || !leagueAddr) return;
+                      setReportBusy(true);
+                      setReportError(null);
+                      try {
+                        const res = await fetch(apiUrl(`/api/v1/leagues/${leagueAddr}/report`), {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            chainId: leagueChainId,
+                            reason: reportReason,
+                            description: reportDescription.trim() || undefined,
+                          }),
+                        });
+                        if (res.status === 409) {
+                          setReportError("You have already submitted a report for this league.");
+                          return;
+                        }
+                        if (!res.ok) {
+                          const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+                          setReportError(body?.error?.message ?? `Request failed (${res.status})`);
+                          return;
+                        }
+                        setReportSubmitted(true);
+                        setShowReportModal(false);
+                      } catch {
+                        setReportError("Network error — please try again.");
+                      } finally {
+                        setReportBusy(false);
+                      }
+                    }}
+                  >
+                    {reportBusy ? "Submitting…" : "Submit report"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="min-h-10"
+                    disabled={reportBusy}
+                    onClick={() => { setShowReportModal(false); setReportError(null); }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Something wrong with this league?</p>
+                {authStatus === "authenticated" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="min-h-9 text-xs"
+                    onClick={() => setShowReportModal(true)}
+                  >
+                    Report League
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Sign in to report.</p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-start">
             <Button type="button" variant="secondary" asChild className="min-h-11">

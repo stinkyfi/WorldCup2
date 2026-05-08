@@ -216,6 +216,86 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     return sendSuccess(reply, { featured, updated: result.count });
   });
 
+  /** Story 10.3 — list league reports for admin review (FR57). */
+  fastify.get("/admin/reports", async (request, reply) => {
+    const session = await sessionFromRequest(request);
+    if (!session) return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    if (!session.isAdmin) return sendError(reply, 403, "FORBIDDEN", "You do not have admin access.");
+
+    const q = normalizeQuery(request.query as Record<string, string | string[] | undefined>);
+    const statusFilter = q.status === "all" ? undefined : (q.status ?? "open");
+
+    const reports = await prisma.leagueReport.findMany({
+      where: statusFilter ? { status: statusFilter } : undefined,
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Enrich with league title (best-effort — null if not indexed).
+    const enriched = await Promise.all(
+      reports.map(async (r) => {
+        const league = await prisma.league.findFirst({
+          where: { chainId: r.chainId, contractAddress: { equals: r.leagueAddress, mode: "insensitive" } },
+          select: { title: true },
+        });
+        return {
+          id: r.id,
+          chainId: r.chainId,
+          leagueAddress: r.leagueAddress,
+          leagueTitle: league?.title ?? null,
+          reporterWallet: r.reporterWallet,
+          reason: r.reason,
+          description: r.description,
+          status: r.status,
+          createdAt: r.createdAt.toISOString(),
+        };
+      }),
+    );
+
+    return sendSuccess(reply, { reports: enriched }, { total: enriched.length });
+  });
+
+  /** Story 10.3 — admin actions a report: warn / pause / refund / dismiss (FR57). */
+  fastify.patch("/admin/reports/:reportId", async (request, reply) => {
+    const session = await sessionFromRequest(request);
+    if (!session) return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    if (!session.isAdmin) return sendError(reply, 403, "FORBIDDEN", "You do not have admin access.");
+
+    const reportId = (request.params as Record<string, string>).reportId;
+    if (!reportId) return sendError(reply, 400, "INVALID_PARAM", "reportId is required.");
+
+    const bodySchema = z.object({
+      action: z.enum(["warn", "pause", "refund", "dismiss"]),
+    });
+    const parsed = bodySchema.safeParse(request.body);
+    if (!parsed.success) throw parsed.error;
+    const { action } = parsed.data;
+
+    const report = await prisma.leagueReport.findUnique({ where: { id: reportId } });
+    if (!report) return sendError(reply, 404, "NOT_FOUND", "Report not found.");
+
+    const statusMap: Record<string, string> = {
+      warn: "warned",
+      pause: "paused",
+      refund: "refunded",
+      dismiss: "dismissed",
+    };
+    const newStatus = statusMap[action];
+
+    await prisma.leagueReport.update({ where: { id: reportId }, data: { status: newStatus } });
+
+    if (action === "warn") {
+      await prisma.league.updateMany({
+        where: {
+          chainId: report.chainId,
+          contractAddress: { equals: report.leagueAddress, mode: "insensitive" },
+        },
+        data: { warnedAt: new Date() },
+      });
+    }
+
+    return sendSuccess(reply, { status: newStatus });
+  });
+
   /** Epic 9 — bytecode heuristics for admin whitelist review (FR53). */
   fastify.get("/admin/token-surface-risk", async (request, reply) => {
     const session = await sessionFromRequest(request);

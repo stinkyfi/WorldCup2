@@ -270,6 +270,55 @@ export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
     return sendSuccess(reply, { leagues: rows.map(serializeLeagueRow) }, { total: rows.length });
   });
 
+  /** Story 10.3 — player submits a report for a league (FR60). Requires SIWE session. */
+  fastify.post("/leagues/:address/report", async (request, reply) => {
+    const sid = (request.cookies as Record<string, string | undefined>)[SESSION_COOKIE_NAME];
+    if (!sid) return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    const session = await prisma.authSession.findUnique({ where: { id: sid } });
+    if (!session || session.expiresAt < new Date()) {
+      return sendError(reply, 401, "UNAUTHORIZED", "Session expired — please sign in again.");
+    }
+
+    const addressParsed = addressParamSchema.safeParse((request.params as Record<string, string>).address);
+    if (!addressParsed.success) {
+      return sendError(reply, 400, "INVALID_ADDRESS", "League address param is invalid.");
+    }
+    const leagueAddress = addressParsed.data;
+
+    const bodySchema = z.object({
+      chainId: z.number().int().positive(),
+      reason: z.enum(["Scam", "Inappropriate", "Other"]),
+      description: z.string().max(500).optional(),
+    });
+    const bodyParsed = bodySchema.safeParse(request.body);
+    if (!bodyParsed.success) throw bodyParsed.error;
+    const { chainId, reason, description } = bodyParsed.data;
+
+    const league = await prisma.league.findFirst({
+      where: { chainId, contractAddress: { equals: leagueAddress, mode: "insensitive" } },
+    });
+    if (!league) return sendError(reply, 404, "NOT_FOUND", "League not found.");
+
+    try {
+      const report = await prisma.leagueReport.create({
+        data: {
+          chainId,
+          leagueAddress: leagueAddress.toLowerCase(),
+          reporterWallet: session.address.toLowerCase(),
+          reason,
+          description: description ?? null,
+        },
+      });
+      return sendSuccess(reply, { id: report.id }, {}, 201);
+    } catch (e: unknown) {
+      const msg = (e as { code?: string })?.code;
+      if (msg === "P2002") {
+        return sendError(reply, 409, "ALREADY_REPORTED", "You have already reported this league.");
+      }
+      throw e;
+    }
+  });
+
   fastify.post("/leagues", async (request, reply) => {
     const parsed = createLeagueBody.safeParse(request.body);
     if (!parsed.success) {

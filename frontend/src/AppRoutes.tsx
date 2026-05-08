@@ -10,6 +10,7 @@ import { AdminTokenWhitelistPage } from "@/pages/AdminTokenWhitelistPage";
 import { AdminSettingsPage } from "@/pages/AdminSettingsPage";
 import { AdminLeaguesPage } from "@/pages/AdminLeaguesPage";
 import { AdminLeagueDetailPage } from "@/pages/AdminLeagueDetailPage";
+import { AdminReportsPage } from "@/pages/AdminReportsPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { BrowsePage } from "@/pages/BrowsePage";
 import { CreateLeagueWizardPage } from "@/pages/CreateLeagueWizardPage";
@@ -100,6 +101,7 @@ export function AppRoutes() {
                   <Route path="settings" element={<AdminSettingsPage />} />
                   <Route path="leagues" element={<AdminLeaguesPage />} />
                   <Route path="leagues/:address" element={<AdminLeagueDetailPage />} />
+                  <Route path="reports" element={<AdminReportsPage />} />
                 </Routes>
               </RequireAdmin>
             </RequireSiwe>

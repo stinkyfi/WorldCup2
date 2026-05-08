@@ -29,6 +29,7 @@ model League {
   // DB default is intentionally set for dev convenience; indexer/backfill will overwrite.
   lockAt            DateTime  @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '30 days')")) @map("lock_at")
   featured          Boolean   @default(false)
+  warnedAt          DateTime? @map("warned_at")
   promotedUntil     DateTime? @map("promoted_until")
   lastCalculatedAt  DateTime? @map("last_calculated_at")
   createdAt         DateTime  @default(now()) @map("created_at")
@@ -227,6 +228,24 @@ model Dispute {
 
   @@index([chainId, leagueAddress], map: "idx_disputes_chain_league")
   @@map("disputes")
+}
+
+/// Story 10.3 — player-submitted league reports, queued for admin review (FR57, FR60).
+model LeagueReport {
+  id             String   @id @default(cuid())
+  chainId        Int      @map("chain_id")
+  leagueAddress  String   @map("league_address")
+  reporterWallet String   @map("reporter_wallet")
+  reason         String   // "Scam" | "Inappropriate" | "Other"
+  description    String?
+  status         String   @default("open") @map("status") // open | warned | paused | refunded | dismissed
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([chainId, leagueAddress, reporterWallet], map: "uniq_report_chain_league_wallet")
+  @@index([chainId, leagueAddress], map: "idx_league_reports_chain_league")
+  @@index([status], map: "idx_league_reports_status")
+  @@map("league_reports")
 }
 
 /// Story 8.1 — Merkle payout leaf + proof for claims UI / API (written after root is posted).
