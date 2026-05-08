@@ -1,6 +1,6 @@
 # Story 8.4: Unclaimed Fund Sweep
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -82,4 +82,15 @@ gpt-5.2
 - `frontend/src/lib/leagueAbi.ts`
 - `frontend/src/lib/sweepWindow.ts`
 - `frontend/test/sweepWindow.unit.test.ts`
+
+## Review checklist — 2026-05-07
+
+| AC | Result | Evidence |
+|---|--------|----------|
+| 1 `sweepUnclaimed()` transfers after 90d | Done | Contract `sweepUnclaimed` enforces 90-day guard; reminder cron flags eligible leagues. |
+| 2 Reverts before 90d | Done | `SweepNotYetAvailable` in contract; reminder only logs, does not call sweep. |
+| 3 Expired claim message | Done | `isPastSweepWindow` helper; `claimErrorMessage` shows sweep-expired copy on claim failure. |
+| 4 Monitoring log reminder | Done | `unclaimedSweepReminders.ts` cron logs leagues within 7d and past 90d. |
+
+Code review patch: per-league RPC errors now logged (chain + address) instead of silently swallowed. `sweepWindow.unit.test.ts` — 3/3 pass. Frontend Vitest — pass.
 

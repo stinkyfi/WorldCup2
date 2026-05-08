@@ -1,6 +1,6 @@
 # Story 8.3: Creator & Dev Fee Claim
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -97,4 +97,15 @@ gpt-5.2
  - frontend/src/lib/merkleFeeClaim.ts
  - frontend/src/pages/LeagueCreatorDashboardPage.tsx
  - _bmad-output/implementation-artifacts/8-3-creator-and-dev-fee-claim.md
+
+## Review checklist — 2026-05-07
+
+| AC | Result | Evidence |
+|---|--------|----------|
+| 1 Fee claim section on creator dashboard | Done | `LeagueCreatorDashboardPage` fee claim card; shown after Merkle root is posted. |
+| 2 `claimFee` tx confirms, marked used | Done | `writeContractAsync(claimFee)`; `AlreadyClaimed` maps to plain-English. |
+| 3 Dev fee independently claimable | Done | Per-league `claimType=1` leaf; no batching. |
+| 4 Success message shown | Done | `feeSuccess` state renders tx hash after confirmation. |
+
+Code review patch: `feeQuery.refetch` (stable ref) used in `useCallback` deps instead of full `feeQuery` object. Task 3 (dev wallet UI) intentionally deferred. Backend + frontend tests — pass.
 

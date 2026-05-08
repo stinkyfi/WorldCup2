@@ -1,6 +1,6 @@
 # Story 8.2: Player Prize Claim
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -102,3 +102,15 @@ gpt-5.2
 ### File List
 
 - _bmad-output/implementation-artifacts/8-2-player-prize-claim.md
+
+## Review checklist — 2026-05-07
+
+| AC | Result | Evidence |
+|---|--------|----------|
+| 1 ClaimPanel shown with amount + USD | Done | `LeagueClaimPage` → `ClaimPanel` renders amount when `eligible: true`. |
+| 2 Backend provides proof | Done | `GET /api/v1/merkle-claim/prize` returns `amountWei` + `proof`; frontend calls `claimPrize`. |
+| 3 Success state + no double-claim | Done | Contract `AlreadyClaimed` revert; UI maps to plain-English. |
+| 4 AlreadyClaimed plain-English | Done | `claimErrorMessage` maps `AlreadyClaimed` and `InvalidProof`. |
+| 5 No leaf → message shown | Done | `eligible: false` renders "You did not finish in a prize position." |
+
+Verification pass (no code delta). Code review patch: removed unnecessary `BigInt(x as unknown as bigint)` double-cast for `merkleRootSetAt`. Frontend Vitest — pass.

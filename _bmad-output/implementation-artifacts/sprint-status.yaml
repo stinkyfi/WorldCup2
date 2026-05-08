@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-26
-last_updated: 2026-05-07T18:09-07:00
+last_updated: 2026-05-07T18:18-07:00
 project: DegenDraft
 project_key: NOKEY
 tracking_system: file-system
@@ -75,7 +75,7 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 3: League Creation & Creator Dashboard
   # ─────────────────────────────────────────────────────────────
-  epic-3: in-progress
+  epic-3: done
   3-1-league-creation-wizard-chain-token-and-fee-limits: done
   3-2-league-creation-wizard-revision-policy-promotion-review-and-on-chain-tx: done
   3-3-minimum-player-threshold-and-refund: done
@@ -85,7 +85,7 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 4: Player Entry & Predictions
   # ─────────────────────────────────────────────────────────────
-  epic-4: in-progress
+  epic-4: done
   4-1-league-entry-compliance-modal-and-fee-review: done
   4-2-league-entry-on-chain-entry-transaction: done
   4-3-prediction-form-desktop-drag-and-drop: done
@@ -99,7 +99,7 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 5: Oracle & Results Posting
   # ─────────────────────────────────────────────────────────────
-  epic-5: in-progress
+  epic-5: done
   5-1-primary-oracle-cron: done
   5-2-redundant-oracle-cron: done
   5-3-admin-manual-results-posting: done
@@ -123,20 +123,20 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 7: Disputes
   # ─────────────────────────────────────────────────────────────
-  epic-7: in-progress
+  epic-7: done
   7-1-player-and-creator-dispute-filing: done
   7-2-admin-dispute-review-panel: done
-  7-3-admin-dispute-resolution-actions: review
+  7-3-admin-dispute-resolution-actions: done
   epic-7-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────
   # Epic 8: Merkle Payout & Claims
   # ─────────────────────────────────────────────────────────────
-  epic-8: in-progress
-  8-1-indexer-merkle-tree-build-and-root-posting: review
-  8-2-player-prize-claim: review
-  8-3-creator-and-dev-fee-claim: review
-  8-4-unclaimed-fund-sweep: review
+  epic-8: done
+  8-1-indexer-merkle-tree-build-and-root-posting: done
+  8-2-player-prize-claim: done
+  8-3-creator-and-dev-fee-claim: done
+  8-4-unclaimed-fund-sweep: done
   epic-8-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────

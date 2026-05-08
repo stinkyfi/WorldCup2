@@ -1,6 +1,6 @@
 # Story 8.1: Indexer — Merkle Tree Build & Root Posting
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -110,3 +110,15 @@ gpt-5.2
 - backend/src/indexer/merklePoster.ts
 - backend/test/merklePoster.disputes.unit.test.ts
 - _bmad-output/implementation-artifacts/8-1-indexer-merkle-tree-build-and-root-posting.md
+
+## Review checklist — 2026-05-07
+
+| AC | Result | Evidence |
+|---|--------|----------|
+| 1 Dispute window gate | Done | `hasAnyUnsettledDispute` checked before `setMerkleRoot`; skips league if any dispute unsettled. |
+| 2 DB persistence | Done | `prisma.$transaction` deletes + recreates `merkle_claims` atomically with tx hash. |
+| 3 Tie / dust handling | Done | `buildLeaguePayoutLeaves` splits ties equally; dust rolls to dev leaf. |
+| 4 Only indexer posts | Done | `setMerkleRoot` restricted to `devWallet`; indexer verifies `posterAccount === devWallet`. |
+| 5 Override rebuild | Done | Dispute gate runs after `allStageGroupsPosted`; override re-scores before root is posted. |
+
+Code review patches applied: capped `getLogs` lookback (500k blocks, env-configurable) and `chain: null` in `writeContract`. Backend unit tests (`merklePoster.disputes.unit.test.ts`) — pass.
