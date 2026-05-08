@@ -39,15 +39,23 @@ function mustGetEnv(name: string): string {
   return val;
 }
 
+/**
+ * Search for the most recent ResultsPosted event and return its block timestamp.
+ * Uses a capped lookback window to stay within RPC provider block-range limits
+ * (most nodes cap at 10k–500k blocks per getLogs request).
+ */
 async function lastResultsPostedTimestamp(
   publicClient: PublicClient,
   oracleController: Address,
 ): Promise<bigint | null> {
   const latest = await publicClient.getBlockNumber();
+  // Default: 500 000 blocks back (~weeks on L2, ~2 months on mainnet). Override via env.
+  const lookback = BigInt(process.env.MERKLE_POSTER_LOG_LOOKBACK_BLOCKS ?? "500000");
+  const fromBlock = latest > lookback ? latest - lookback : 0n;
   const logs = await publicClient.getLogs({
     address: oracleController,
     event: resultsPostedEvent,
-    fromBlock: 0n,
+    fromBlock,
     toBlock: latest,
   });
   if (logs.length === 0) return null;
@@ -261,7 +269,7 @@ export async function runMerkleIndexerOnce(params?: { chainId?: number }): Promi
           abi: leagueAbi,
           functionName: "setMerkleRoot",
           args: [root],
-          chain: undefined,
+          chain: null,
         });
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 

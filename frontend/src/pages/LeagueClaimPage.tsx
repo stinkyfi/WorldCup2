@@ -181,13 +181,8 @@ export function LeagueClaimPage() {
       const m = (e as Error | null | undefined)?.message ?? "";
       let pastSweep = false;
       if (resolved && merkleRootSetAt !== undefined) {
-        try {
-          const nowSec = BigInt(Math.floor(Date.now() / 1000));
-          const setAt = BigInt(merkleRootSetAt as unknown as bigint);
-          pastSweep = isPastSweepWindow({ merkleRootSetAtSec: setAt, nowSec });
-        } catch {
-          pastSweep = false;
-        }
+        const nowSec = BigInt(Math.floor(Date.now() / 1000));
+        pastSweep = isPastSweepWindow({ merkleRootSetAtSec: merkleRootSetAt, nowSec });
       }
       setClaimError(claimErrorMessage(m, { isPastSweepWindow: pastSweep }));
     } finally {

@@ -147,7 +147,7 @@ export function LeagueCreatorDashboardPage() {
     feeAmountWei,
     feeEligible,
     feeErrorMessage,
-    feeQuery,
+    feeQuery.refetch,
     isConnected,
     leagueAddr,
     leagueChainId,

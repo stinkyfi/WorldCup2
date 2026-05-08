@@ -83,8 +83,9 @@ async function main() {
             ].join("\n"),
           );
         }
-      } catch {
-        // Ignore per-league read failures; reminder job should never crash.
+      } catch (e) {
+        // Log but do not crash; a single bad RPC read should not abort the whole sweep scan.
+        console.error(`sweep reminder: skipping ${leagueAddr} (chain ${chainId}): ${(e as Error)?.message ?? String(e)}`);
       }
     }
   }
