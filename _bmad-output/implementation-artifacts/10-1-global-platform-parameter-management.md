@@ -1,6 +1,6 @@
 # Story 10.1: Global Platform Parameter Management
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -40,27 +40,27 @@ So that I can tune fees, limits, and policies across the platform without a cont
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend `leagueFactoryAbi.ts` with admin read + write entries (AC: all)
-  - [ ] Add view getters: `devFeeBps`, `creatorFeeCap`, `minEntryAmount`, `creationFee`, `creationsPaused`, `disputeDepositToken`, `disputeDepositAmount`, `refundAuthority`
-  - [ ] Add write functions: `setGlobalParams`, `setCreationFee`, `setCreationsPaused`, `setDisputeConfig`
-  - [ ] Add events: `GlobalParamsUpdated`, `CreationsPausedUpdated`, `CreationFeeUpdated`, `DisputeConfigUpdated`
+- [x] Task 1: Extend `leagueFactoryAbi.ts` with admin read + write entries (AC: all)
+  - [x] Add view getters: `devFeeBps`, `creatorFeeCap`, `minEntryAmount`, `creationFee`, `creationsPaused`, `disputeDepositToken`, `disputeDepositAmount`, `refundAuthority`
+  - [x] Add write functions: `setGlobalParams`, `setCreationFee`, `setCreationsPaused`, `setDisputeConfig`
+  - [x] Add events: `GlobalParamsUpdated`, `CreationsPausedUpdated`, `CreationFeeUpdated`, `DisputeConfigUpdated`
 
-- [ ] Task 2: Build `AdminSettingsPage.tsx` at route `/admin/settings` (AC: #1–#5)
-  - [ ] Chain selector (Base / Ethereum / Sonic — same `CreateLeagueChainId` pattern as `AdminTokenWhitelistPage`)
-  - [ ] Section A — "Global fee params" card: display current `devFeeBps`, `creatorFeeCap`, `minEntryAmount`; edit fields; "Update global params" button → `setGlobalParams`
-  - [ ] Section B — "Creation fee" card: display `creationFee` (wei); edit field; "Update creation fee" button → `setCreationFee`
-  - [ ] Section C — "League creation" card: display `creationsPaused` boolean; toggle button → `setCreationsPaused`
-  - [ ] Section D — "Dispute config" card: display `disputeDepositToken`, `disputeDepositAmount`, `refundAuthority`; edit fields; "Update dispute config" button → `setDisputeConfig`
-  - [ ] All sections: display last tx hash / explorer link on success; plain-English error mapping for common reverts (`OwnableUnauthorizedAccount`, user rejected)
-  - [ ] `refreshBusy` pattern: single Refresh button at top that refetches all reads
+- [x] Task 2: Build `AdminSettingsPage.tsx` at route `/admin/settings` (AC: #1–#5)
+  - [x] Chain selector (Base / Ethereum / Sonic — same `CreateLeagueChainId` pattern as `AdminTokenWhitelistPage`)
+  - [x] Section A — "Global fee params" card: display current `devFeeBps`, `creatorFeeCap`, `minEntryAmount`; edit fields; "Update global params" button → `setGlobalParams`
+  - [x] Section B — "Creation fee" card: display `creationFee` (wei); edit field; "Update creation fee" button → `setCreationFee`
+  - [x] Section C — "League creation" card: display `creationsPaused` boolean; toggle button → `setCreationsPaused`
+  - [x] Section D — "Dispute config" card: display `disputeDepositToken`, `disputeDepositAmount`, `refundAuthority`; edit fields; "Update dispute config" button → `setDisputeConfig`
+  - [x] All sections: display last tx hash / explorer link on success; plain-English error mapping for common reverts (`OwnableUnauthorizedAccount`, user rejected)
+  - [x] `refreshBusy` pattern: single Refresh button at top that refetches all reads
 
-- [ ] Task 3: Wire route and nav (AC: #1)
-  - [ ] Add `<Route path="settings" element={<AdminSettingsPage />} />` inside the `/admin/*` block in `AppRoutes.tsx`
-  - [ ] Add "Platform settings" button to `AdminPlaceholderPage.tsx` linking to `/admin/settings`
+- [x] Task 3: Wire route and nav (AC: #1)
+  - [x] Add `<Route path="settings" element={<AdminSettingsPage />} />` inside the `/admin/*` block in `AppRoutes.tsx`
+  - [x] Add "Platform settings" button to `AdminPlaceholderPage.tsx` linking to `/admin/settings`
 
-- [ ] Task 4: Quality gates
-  - [ ] `npm run lint` (frontend) — zero new errors
-  - [ ] `npm run test` (frontend Vitest) — all pass
+- [x] Task 4: Quality gates
+  - [x] `npm run lint` (frontend) — zero new errors
+  - [x] `npm run test` (frontend Vitest) — all pass (26/26)
 
 ## Dev Notes
 
@@ -135,9 +135,18 @@ All reads and writes are direct on-chain via wagmi/viem. No Prisma, no API route
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
 
 ### Completion Notes List
+
+- Extended `leagueFactoryAbi.ts` with 8 view getters, 4 owner write functions, and 4 events — existing `createLeague`/`creationFee`/`LeagueCreated` entries preserved.
+- Built `AdminSettingsPage.tsx` with four Cards (global fee params, creation fee, creations-paused toggle, dispute config); each section reads on-chain values and sends a distinct `writeContractAsync` call; shared error + lastTx state with explorer link.
+- Chain selector (Base/Ethereum/Sonic) and single Refresh button follow the `AdminTokenWhitelistPage` pattern exactly.
+- Added `/admin/settings` route in `AppRoutes.tsx` and "Platform settings" button in `AdminPlaceholderPage.tsx`.
+- Frontend lint: 0 errors. Vitest: 26/26 pass.
+- Scope note documented in story: "free league toggle" and per-group oracle grace period have no LeagueFactory backing; not implemented.
 
 ### File List
 
@@ -145,3 +154,5 @@ All reads and writes are direct on-chain via wagmi/viem. No Prisma, no API route
 - `frontend/src/pages/AdminSettingsPage.tsx` (new)
 - `frontend/src/pages/AdminPlaceholderPage.tsx`
 - `frontend/src/AppRoutes.tsx`
+- `_bmad-output/implementation-artifacts/10-1-global-platform-parameter-management.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`

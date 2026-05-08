@@ -23,6 +23,9 @@ export function AdminPlaceholderPage() {
           <Link to="/admin/token-whitelist">Token whitelist</Link>
         </Button>
         <Button type="button" variant="secondary" asChild className="min-h-11">
+          <Link to="/admin/settings">Platform settings</Link>
+        </Button>
+        <Button type="button" variant="secondary" asChild className="min-h-11">
           <Link to="/">Back to home</Link>
         </Button>
       </div>
