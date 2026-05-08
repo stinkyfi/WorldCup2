@@ -1,6 +1,6 @@
 # Story 9.4: Admin Token De-whitelisting
 
-Status: review
+Status: done
 
 <!-- Ultimate context compiled for dev-story; validate optional: validate-create-story -->
 
