@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type Address, type Hex, isAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -55,6 +55,11 @@ export function AdminSettingsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<LastTx | null>(null);
+
+  useEffect(() => {
+    setError(null);
+    setLastTx(null);
+  }, [chainIdRaw]);
 
   // ─── On-chain reads ───────────────────────────────────────────────────────
   const readOpts = { address: factory, abi: leagueFactoryAbi, chainId, query: { enabled: Boolean(factory) } } as const;
@@ -194,13 +199,18 @@ export function AdminSettingsPage() {
     const tokenTrimmed = disputeTokenInput.trim();
     const refundTrimmed = refundAuthorityInput.trim();
     const amount = parseBigIntInput(disputeAmountInput);
-    const tokenZeroAllowed = tokenTrimmed === "0x0000000000000000000000000000000000000000";
-    if (!tokenZeroAllowed && !isAddress(tokenTrimmed)) {
+    const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+    const tokenIsZero = tokenTrimmed === ZERO_ADDR;
+    if (!tokenIsZero && !isAddress(tokenTrimmed)) {
       setError("Dispute deposit token must be a valid address (or zero address to disable).");
       return;
     }
     if (amount === null) { setError("Dispute deposit amount must be a non-negative integer (wei)."); return; }
     if (!isAddress(refundTrimmed)) { setError("Refund authority must be a valid address."); return; }
+    if (!tokenIsZero && refundTrimmed === ZERO_ADDR) {
+      setError("Refund authority cannot be the zero address when a deposit token is set — disputes would be permanently un-settleable.");
+      return;
+    }
     try {
       setBusyId("dispute");
       await switchChainAsync({ chainId });
@@ -392,7 +402,7 @@ export function AdminSettingsPage() {
               <Button
                 type="button"
                 className="min-h-11"
-                disabled={busy || !factory || !isConnected || creationsPaused === true}
+                disabled={busy || !factory || !isConnected || creationsPaused !== false}
                 onClick={() => void onSetPaused(true)}
               >
                 {busyId === "paused" ? "Confirming…" : "Pause new leagues"}
@@ -401,7 +411,7 @@ export function AdminSettingsPage() {
                 type="button"
                 variant="secondary"
                 className="min-h-11"
-                disabled={busy || !factory || !isConnected || creationsPaused === false}
+                disabled={busy || !factory || !isConnected || creationsPaused !== true}
                 onClick={() => void onSetPaused(false)}
               >
                 {busyId === "paused" ? "Confirming…" : "Unpause new leagues"}
