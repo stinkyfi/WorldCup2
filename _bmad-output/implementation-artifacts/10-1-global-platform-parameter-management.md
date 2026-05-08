@@ -1,6 +1,6 @@
 # Story 10.1: Global Platform Parameter Management
 
-Status: review
+Status: done
 
 ## Story
 
