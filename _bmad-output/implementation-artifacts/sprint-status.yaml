@@ -152,10 +152,10 @@ development_status:
   # ─────────────────────────────────────────────────────────────
   # Epic 10: Admin Controls & Platform Management
   # ─────────────────────────────────────────────────────────────
-  epic-10: in-progress
+  epic-10: done
   10-1-global-platform-parameter-management: done
-  10-2-league-pause-and-featured-flagging: review
-  10-3-reported-league-moderation: review
+  10-2-league-pause-and-featured-flagging: done
+  10-3-reported-league-moderation: done
   epic-10-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────

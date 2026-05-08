@@ -1,6 +1,6 @@
 # Story 10.3: Reported League Moderation
 
-Status: review
+Status: done
 
 ## Story
 

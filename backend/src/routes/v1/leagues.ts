@@ -276,6 +276,9 @@ export const leagueRoutes: FastifyPluginAsync = async (fastify) => {
     if (!sid) return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
     const session = await prisma.authSession.findUnique({ where: { id: sid } });
     if (!session || session.expiresAt < new Date()) {
+      if (session) {
+        await prisma.authSession.delete({ where: { id: sid } }).catch(() => undefined);
+      }
       return sendError(reply, 401, "UNAUTHORIZED", "Session expired — please sign in again.");
     }
 

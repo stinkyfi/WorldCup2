@@ -109,7 +109,11 @@ export function AdminReportsPage() {
       });
       await waitForTransactionReceipt(wagmiConfig, { hash, chainId: report.chainId });
       setTxMsg({ id: report.id, url: txExplorerUrl(report.chainId, hash) });
-      mutation.mutate({ reportId: report.id, action });
+      mutation.mutate({ reportId: report.id, action }, {
+        onError: (e: Error) => {
+          setWriteError(`On-chain tx confirmed but status update failed: ${e.message}. Refresh and re-action if needed.`);
+        },
+      });
     } catch (e) {
       setWriteError(mapWriteError((e as Error | null | undefined)?.message ?? "Unknown error"));
       setActiveId(null);

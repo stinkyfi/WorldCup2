@@ -272,6 +272,9 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
 
     const report = await prisma.leagueReport.findUnique({ where: { id: reportId } });
     if (!report) return sendError(reply, 404, "NOT_FOUND", "Report not found.");
+    if (report.status !== "open") {
+      return sendError(reply, 409, "ALREADY_ACTIONED", `Report is already in '${report.status}' status.`);
+    }
 
     const statusMap: Record<string, string> = {
       warn: "warned",
