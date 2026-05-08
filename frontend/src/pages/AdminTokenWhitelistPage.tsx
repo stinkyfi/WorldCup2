@@ -401,6 +401,8 @@ export function AdminTokenWhitelistPage() {
 
         {!registry ? null : approvedQuery.isLoading ? (
           <p className="mt-3 text-sm text-muted-foreground">Loading approved tokens…</p>
+        ) : approvedQuery.error ? (
+          <p className="mt-3 text-sm text-destructive">Failed to load approved tokens — check RPC connection and refresh.</p>
         ) : approvedSorted.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No approved tokens on this registry deployment.</p>
         ) : (
@@ -419,7 +421,7 @@ export function AdminTokenWhitelistPage() {
                     variant="secondary"
                     className="min-h-11"
                     disabled={Boolean(busyId)}
-                    onClick={() => setConfirmRemove(null)}
+                    onClick={() => { setConfirmRemove(null); setError(null); }}
                   >
                     Cancel
                   </Button>
@@ -437,21 +439,26 @@ export function AdminTokenWhitelistPage() {
 
             {approvedSorted.map((t) => {
               const busyThis = busyId === `d-${t.toLowerCase()}`;
-              const otherPending = Boolean(confirmRemove && confirmRemove !== t);
+              const isConfirming = confirmRemove === t;
+              const otherPending = Boolean(confirmRemove && !isConfirming);
               return (
                 <div
                   key={t}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/40 px-4 py-3 text-sm"
+                  className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
+                    isConfirming
+                      ? "border-destructive/40 bg-destructive/5"
+                      : "border-border/70 bg-background/40"
+                  }`}
                 >
                   <div className="min-w-0 break-all font-mono text-xs text-muted-foreground">{t}</div>
                   <Button
                     type="button"
                     variant="secondary"
                     className="min-h-11 shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
-                    disabled={Boolean(busyId) || !isConnected || otherPending}
+                    disabled={Boolean(busyId) || !isConnected || otherPending || isConfirming}
                     onClick={() => setConfirmRemove(t)}
                   >
-                    {busyThis ? "…" : "De-whitelist"}
+                    {busyThis ? "…" : isConfirming ? "Pending confirmation…" : "De-whitelist"}
                   </Button>
                 </div>
               );
