@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { type Address, type Hex, isAddress } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -55,11 +55,6 @@ export function AdminSettingsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<LastTx | null>(null);
-
-  useEffect(() => {
-    setError(null);
-    setLastTx(null);
-  }, [chainIdRaw]);
 
   // ─── On-chain reads ───────────────────────────────────────────────────────
   const readOpts = { address: factory, abi: leagueFactoryAbi, chainId, query: { enabled: Boolean(factory) } } as const;
@@ -264,7 +259,11 @@ export function AdminSettingsPage() {
             value={String(chainIdRaw)}
             onChange={(e) => {
               const v = Number(e.target.value);
-              if (v === 1 || v === 8453 || v === 146) setChainIdRaw(v as FactoryChainId);
+              if (v === 1 || v === 8453 || v === 146) {
+                setChainIdRaw(v as FactoryChainId);
+                setError(null);
+                setLastTx(null);
+              }
             }}
           >
             <option value="8453">Base</option>

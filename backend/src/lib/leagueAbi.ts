@@ -23,4 +23,10 @@ export const leagueAbi = parseAbi([
   "function dismissDisputeConfiscate(uint256 disputeId)",
   "function triggerRefund()",
   "event DisputeFiled(address indexed disputant, uint8 indexed groupId, bool isCreator)",
+
+  // ─── Entry pause (Story 10.2) ────────────────────────────────────────────
+  "function entriesPaused() view returns (bool)",
+  "function pauseEntries()",
+  "function resumeEntries()",
+  "event EntriesPauseStatusChanged(bool paused)",
 ]);

@@ -33,5 +33,11 @@ export const leagueAbi = parseAbi([
   "function dismissDisputeConfiscate(uint256 disputeId)",
   "function triggerRefund()",
   "function oracleController() view returns (address)",
+
+  // ─── Entry pause (Story 10.2) ────────────────────────────────────────────
+  "function entriesPaused() view returns (bool)",
+  "function pauseEntries()",
+  "function resumeEntries()",
+  "event EntriesPauseStatusChanged(bool paused)",
 ]);
 

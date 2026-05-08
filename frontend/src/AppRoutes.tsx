@@ -8,6 +8,8 @@ import { AdminOracleHealthPage } from "@/pages/AdminOracleHealthPage";
 import { AdminDisputesPage } from "@/pages/AdminDisputesPage";
 import { AdminTokenWhitelistPage } from "@/pages/AdminTokenWhitelistPage";
 import { AdminSettingsPage } from "@/pages/AdminSettingsPage";
+import { AdminLeaguesPage } from "@/pages/AdminLeaguesPage";
+import { AdminLeagueDetailPage } from "@/pages/AdminLeagueDetailPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { BrowsePage } from "@/pages/BrowsePage";
 import { CreateLeagueWizardPage } from "@/pages/CreateLeagueWizardPage";
@@ -96,6 +98,8 @@ export function AppRoutes() {
                   <Route path="disputes" element={<AdminDisputesPage />} />
                   <Route path="token-whitelist" element={<AdminTokenWhitelistPage />} />
                   <Route path="settings" element={<AdminSettingsPage />} />
+                  <Route path="leagues" element={<AdminLeaguesPage />} />
+                  <Route path="leagues/:address" element={<AdminLeagueDetailPage />} />
                 </Routes>
               </RequireAdmin>
             </RequireSiwe>

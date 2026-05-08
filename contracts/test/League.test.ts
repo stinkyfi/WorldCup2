@@ -661,4 +661,99 @@ describe("League", () => {
       (err: Error) => err.message.includes("InvalidParams")
     );
   });
+
+  // ─── Story 10.2: pauseEntries / resumeEntries ───────────────────────────────
+
+  /** Helper: deploy League with a real refundAuthority set so pause/resume can be called. */
+  async function deployLeagueWithRefundAuth() {
+    const connection = await hre.network.getOrCreate();
+    const [, devWalletClient, creator, oracle, player1, player2, refundAuth] =
+      await connection.viem.getWalletClients();
+
+    const token = await connection.viem.deployContract("MockERC20", ["TestToken", "TTK"]);
+    const entryFee = 5_000_000_000_000_000_000n;
+    await token.write.mint([player1.account.address, entryFee * 10n]);
+    await token.write.mint([player2.account.address, entryFee * 10n]);
+
+    const publicClient = await connection.viem.getPublicClient();
+    const latestBlock = await publicClient.getBlock({ blockTag: "latest" });
+    const lockTime = latestBlock.timestamp + 7n * 24n * 60n * 60n;
+
+    const mockDepositToken = await connection.viem.deployContract("MockERC20", ["USD", "USD"]);
+
+    const league = await connection.viem.deployContract("League", [
+      creator.account.address,
+      oracle.account.address,
+      devWalletClient.account.address,
+      200n, 300n,
+      { token: token.address, entryFee, maxEntries: 0n, maxEntriesPerWallet: 5n, minThreshold: 0n, revisionFee: 0n, revisionPolicy: 0, lockTime },
+      mockDepositToken.address,
+      50_000_000n,
+      refundAuth.account.address,
+    ]);
+
+    return { league, token, player1, player2, refundAuth, entryFee, lockTime, connection };
+  }
+
+  it("entriesPaused is false by default", async () => {
+    const { league } = await deployLeagueWithRefundAuth();
+    assert.equal(await league.read.entriesPaused(), false);
+  });
+
+  it("pauseEntries sets entriesPaused=true and enter reverts EntriesPaused", async () => {
+    const { league, token, player1, refundAuth, entryFee, connection } = await deployLeagueWithRefundAuth();
+    const publicClient = await connection.viem.getPublicClient();
+
+    const txHash = await league.write.pauseEntries({ account: refundAuth.account });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+    // Event emitted
+    const events = await league.getEvents.EntriesPauseStatusChanged(
+      {},
+      { fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber }
+    );
+    assert.equal(events.length, 1);
+    assert.equal(events[0].args.paused, true);
+
+    assert.equal(await league.read.entriesPaused(), true);
+
+    // enter now reverts
+    await token.write.approve([league.address, entryFee], { account: player1.account });
+    await assert.rejects(
+      league.simulate.enter([`0x${"ab".repeat(32)}` as Hex], { account: player1.account }),
+      (err: Error) => err.message.includes("EntriesPaused")
+    );
+  });
+
+  it("resumeEntries clears entriesPaused and enter succeeds again", async () => {
+    const { league, token, player1, refundAuth, entryFee } = await deployLeagueWithRefundAuth();
+
+    await league.write.pauseEntries({ account: refundAuth.account });
+    assert.equal(await league.read.entriesPaused(), true);
+
+    await league.write.resumeEntries({ account: refundAuth.account });
+    assert.equal(await league.read.entriesPaused(), false);
+
+    // enter succeeds after resume
+    await token.write.approve([league.address, entryFee], { account: player1.account });
+    await league.write.enter([`0x${"ab".repeat(32)}` as Hex], { account: player1.account });
+    assert.equal(await league.read.totalEntries(), 1n);
+  });
+
+  it("pauseEntries reverts NotAuthorized for non-refundAuthority callers", async () => {
+    const { league, player1 } = await deployLeagueWithRefundAuth();
+    await assert.rejects(
+      league.simulate.pauseEntries({ account: player1.account }),
+      (err: Error) => err.message.includes("NotAuthorized")
+    );
+  });
+
+  it("resumeEntries reverts NotAuthorized for non-refundAuthority callers", async () => {
+    const { league, player1, refundAuth } = await deployLeagueWithRefundAuth();
+    await league.write.pauseEntries({ account: refundAuth.account });
+    await assert.rejects(
+      league.simulate.resumeEntries({ account: player1.account }),
+      (err: Error) => err.message.includes("NotAuthorized")
+    );
+  });
 });

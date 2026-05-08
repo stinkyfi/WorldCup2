@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { type Address, type Hex } from "viem";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -41,9 +41,6 @@ export function AdminTokenWhitelistPage() {
   const [lastTx, setLastTx] = useState<{ hash: Hex; url: string } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<Address | null>(null);
 
-  useEffect(() => {
-    setConfirmRemove(null);
-  }, [chainIdRaw]);
 
   const { data: requestCount } = useReadContract({
     address: registry,
@@ -283,7 +280,10 @@ export function AdminTokenWhitelistPage() {
             value={String(chainIdRaw)}
             onChange={(e) => {
               const v = Number(e.target.value);
-              if (v === 1 || v === 8453 || v === 146) setChainIdRaw(v);
+              if (v === 1 || v === 8453 || v === 146) {
+                setChainIdRaw(v);
+                setConfirmRemove(null);
+              }
             }}
           >
             <option value="8453">Base</option>

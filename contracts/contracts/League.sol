@@ -69,6 +69,9 @@ contract League is ReentrancyGuard {
 
     LeagueState public state;
 
+    /// @notice When true, `enter()` reverts with `EntriesPaused`. Set by refundAuthority (Story 10.2).
+    bool public entriesPaused;
+
     // ─── Entry tracking ──────────────────────────────────────────────────────
 
     uint256 public totalEntries;
@@ -97,6 +100,9 @@ contract League is ReentrancyGuard {
 
     /// @notice Emitted when a player or creator files an on-chain dispute (Epic 7).
     event DisputeFiled(address indexed disputant, uint8 indexed groupId, bool isCreator);
+
+    /// @notice Emitted when refundAuthority pauses or resumes new entries (Story 10.2).
+    event EntriesPauseStatusChanged(bool paused);
 
     event EntrySubmitted(address indexed player, bytes32 commitmentHash);
     event EntryRevised(address indexed player, uint256 indexed entryIndex, bytes32 commitmentHash, uint256 feePaid);
@@ -129,6 +135,7 @@ contract League is ReentrancyGuard {
     error DisputesDisabled();
     error DisputeAlreadySettled();
     error InvalidDispute();
+    error EntriesPaused();
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -174,9 +181,22 @@ contract League is ReentrancyGuard {
 
     // ─── Entry ───────────────────────────────────────────────────────────────
 
+    /// @notice Pause new entries. Only callable by refundAuthority (Story 10.2).
+    function pauseEntries() external onlyRefundAuthority {
+        entriesPaused = true;
+        emit EntriesPauseStatusChanged(true);
+    }
+
+    /// @notice Resume new entries after a pause. Only callable by refundAuthority (Story 10.2).
+    function resumeEntries() external onlyRefundAuthority {
+        entriesPaused = false;
+        emit EntriesPauseStatusChanged(false);
+    }
+
     /// @notice Enter the league by paying `entryFee` in `token` and supplying a commitment hash.
     /// @param commitmentHash keccak256 of the player's plaintext predictions (revealed post-lock).
     function enter(bytes32 commitmentHash) external nonReentrant {
+        if (entriesPaused) revert EntriesPaused();
         if (block.timestamp >= lockTime) revert LeagueLocked();
         if (maxEntries > 0 && totalEntries >= maxEntries) revert MaxEntriesReached();
         if (maxEntriesPerWallet > 0 && _walletEntryCount[msg.sender] >= maxEntriesPerWallet)

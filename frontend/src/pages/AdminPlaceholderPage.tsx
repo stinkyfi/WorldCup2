@@ -26,6 +26,9 @@ export function AdminPlaceholderPage() {
           <Link to="/admin/settings">Platform settings</Link>
         </Button>
         <Button type="button" variant="secondary" asChild className="min-h-11">
+          <Link to="/admin/leagues">Leagues</Link>
+        </Button>
+        <Button type="button" variant="secondary" asChild className="min-h-11">
           <Link to="/">Back to home</Link>
         </Button>
       </div>

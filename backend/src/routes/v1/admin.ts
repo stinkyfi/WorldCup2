@@ -182,6 +182,40 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     return sendSuccess(reply, { chains });
   });
 
+  /** Story 10.2 — toggle featured flag on a league row by chain + contract address. */
+  fastify.patch("/admin/leagues/featured", async (request, reply) => {
+    const session = await sessionFromRequest(request);
+    if (!session) return sendError(reply, 401, "UNAUTHORIZED", "Sign in required.");
+    if (!session.isAdmin) {
+      return sendError(reply, 403, "FORBIDDEN", "You do not have admin access.");
+    }
+
+    const bodySchema = z.object({
+      chainId: z.number().int().positive(),
+      leagueAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/i, "Invalid league address"),
+      featured: z.boolean(),
+    });
+
+    const parsed = bodySchema.safeParse(request.body);
+    if (!parsed.success) throw parsed.error;
+
+    const { chainId, leagueAddress, featured } = parsed.data;
+
+    const result = await prisma.league.updateMany({
+      where: {
+        chainId,
+        contractAddress: { equals: leagueAddress, mode: "insensitive" },
+      },
+      data: { featured },
+    });
+
+    if (result.count === 0) {
+      return sendError(reply, 404, "NOT_FOUND", "No league found for the given chainId + address.");
+    }
+
+    return sendSuccess(reply, { featured, updated: result.count });
+  });
+
   /** Epic 9 — bytecode heuristics for admin whitelist review (FR53). */
   fastify.get("/admin/token-surface-risk", async (request, reply) => {
     const session = await sessionFromRequest(request);
